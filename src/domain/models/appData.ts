@@ -1,7 +1,7 @@
-import { WorkSettings } from "./workSettings";
 import { WorkDay } from "./workDay";
+import { WorkSettings } from "./workSettings";
 
 export interface AppData {
   settings?: WorkSettings;
-  workDays: Record<string, WorkDay>; // "2025-11-15": {...}
+  workDays: Record<string, WorkDay>;
 }
