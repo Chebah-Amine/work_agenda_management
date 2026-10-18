@@ -1,0 +1,20 @@
+WORKING FEATURE : Calendar FEATURE
+
+Structure : 
+
+1) légende --> OK
+2) header Calendar
+3) calendrier
+4) Chiffres clés
+
+2) Les icônes des flèches à recentrer --> DONE 
+--> à utiliser la librairie ionicons
+
+3) 
+
+SAISIE UNIQUE :
+
+- Problème de la case blanche, quand on appuye sur enregistrer sans avoir saisi un créneau la case devient blanche
+--> Empêcher 
+
+SAISIE INTERVALLE : 
