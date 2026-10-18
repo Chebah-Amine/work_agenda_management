@@ -1,6 +1,0 @@
-WORKING FEATURE : Calendar FEATURE
-
-Structure : 
-
-1) légende
-2) header Calendar

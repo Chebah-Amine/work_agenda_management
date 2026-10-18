@@ -1,5 +1,0 @@
-WORKING FEATURE : Calendar FEATURE
-
-Structure : 
-
--- légende
