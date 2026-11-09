@@ -7,7 +7,6 @@
     "icon": "./assets/images/icon.png",
     "scheme": "workagendamanagement",
     "userInterfaceStyle": "automatic",
-    "newArchEnabled": true,
     "ios": {
       "supportsTablet": true
     },
@@ -49,7 +48,8 @@
       "expo-web-browser",
       "expo-font",
       "expo-image",
-      "expo-sharing"
+      "expo-sharing",
+      "expo-status-bar"
     ],
     "experiments": {
       "typedRoutes": true,
