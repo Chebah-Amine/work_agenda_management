@@ -1,10 +1,11 @@
 .DEFAULT_GOAL := help
-.PHONY: help install start android ios web clear test typecheck lint check env
+.PHONY: help install start tunnel android ios web clear test typecheck lint check env
 
 help: ## Affiche cette aide
 	@echo "Commandes disponibles :"
 	@echo "  make install    Installe les dependances"
 	@echo "  make start      Lance l'app (QR code pour Expo Go)"
+	@echo "  make tunnel     Lance l'app via un tunnel (si le telephone ne joint pas le PC en Wi-Fi)"
 	@echo "  make android    Lance l'app sur Android"
 	@echo "  make ios        Lance l'app sur iOS (macOS uniquement)"
 	@echo "  make web        Lance l'app dans le navigateur"
@@ -20,6 +21,9 @@ install:
 
 start:
 	npx expo start
+
+tunnel:
+	npx expo start --tunnel ngrok
 
 android:
 	npx expo start --android
