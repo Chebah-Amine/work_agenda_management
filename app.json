@@ -46,7 +46,8 @@
           "photosPermission": "Vos photos servent à choisir une photo de vos notes d'horaires.",
           "microphonePermission": false
         }
-      ]
+      ],
+      "expo-web-browser"
     ],
     "experiments": {
       "typedRoutes": true,
