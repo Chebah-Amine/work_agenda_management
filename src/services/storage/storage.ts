@@ -1,4 +1,5 @@
 export interface StorageService {
-    load(): Promise<any>;
-    save(data: any): Promise<void>;
+  /** Données brutes telles qu'enregistrées (à normaliser par l'appelant). */
+  load(): Promise<unknown>;
+  save(data: unknown): Promise<void>;
 }

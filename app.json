@@ -38,6 +38,14 @@
             "backgroundColor": "#000000"
           }
         }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "cameraPermission": "L'appareil photo sert à photographier vos notes d'horaires.",
+          "photosPermission": "Vos photos servent à choisir une photo de vos notes d'horaires.",
+          "microphonePermission": false
+        }
       ]
     ],
     "experiments": {

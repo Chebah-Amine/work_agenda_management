@@ -2,50 +2,38 @@ import { File, Paths } from "expo-file-system";
 import { Platform } from "react-native";
 import { StorageService } from "./storage";
 
-const file = new File(Paths.document, "data.json");
+const WEB_KEY = "data";
 
 export class LocalStorage implements StorageService {
-  async load() {
-    // 🌐 Web : fallback sur localStorage
-    if (Platform.OS === "web") {
-      const raw = globalThis.localStorage?.getItem("data");
-      return raw ? JSON.parse(raw) : {};
-    }
+  // Créé à la demande : Paths.document n'existe pas sur le web.
+  private get file() {
+    return new File(Paths.document, "data.json");
+  }
 
-    // 📱 Mobile : fichier dans Documents
+  async load(): Promise<unknown> {
     try {
-      if (!file.exists) {
-        // fichier pas encore créé
-        return {};
+      if (Platform.OS === "web") {
+        const raw = globalThis.localStorage?.getItem(WEB_KEY);
+        return raw ? JSON.parse(raw) : {};
       }
-
-      const text = await file.text(); // nouvelle API async
+      const file = this.file;
+      if (!file.exists) return {};
+      const text = await file.text();
       return text ? JSON.parse(text) : {};
     } catch (e) {
-      console.warn("Error reading local file", e);
+      console.warn("Lecture des données impossible", e);
       return {};
     }
   }
 
-  async save(data: any) {
+  async save(data: unknown): Promise<void> {
     const json = JSON.stringify(data);
-
-    // 🌐 Web
     if (Platform.OS === "web") {
-      globalThis.localStorage?.setItem("data", json);
+      globalThis.localStorage?.setItem(WEB_KEY, json);
       return;
     }
-
-    // 📱 Mobile
-    try {
-      // create() lève si le fichier existe déjà, donc on entoure en try/catch
-      if (!file.exists) {
-        file.create();
-      }
-
-      file.write(json); // sync mais très léger pour un petit JSON
-    } catch (e) {
-      console.warn("Error writing local file", e);
-    }
+    const file = this.file;
+    if (!file.exists) file.create();
+    file.write(json);
   }
 }
