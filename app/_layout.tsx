@@ -6,10 +6,12 @@ import { ComponentProps } from "react";
 import type { ColorValue } from "react-native";
 
 type IconName = ComponentProps<typeof Ionicons>["name"];
+type IconColor = ComponentProps<typeof Ionicons>["color"];
 
 const tabIcon = (name: IconName) =>
   function TabIcon({ color, size }: { color: ColorValue; size: number }) {
-    return <Ionicons name={name} size={size} color={color} />;
+    // @expo/vector-icons n'a pas encore élargi son type `color` au ColorValue de React Native 0.88.
+    return <Ionicons name={name} size={size} color={color as IconColor} />;
   };
 
 export default function RootLayout() {
