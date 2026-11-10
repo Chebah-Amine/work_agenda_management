@@ -5,10 +5,11 @@ import { formatDuration, formatIntervals, totalMinutes, validateIntervals } from
 import { isScanConfigured, scanNotes } from "@/services/scan/scanNotes";
 import { useAppData } from "@/state/AppDataContext";
 import { Button } from "@/ui/Button";
+import { Card, CardHeader } from "@/ui/Card";
 import { DayEditorModal } from "@/ui/DayEditorModal";
 import { LoadingView } from "@/ui/LoadingView";
 import { MonthHeader, useYearMonth } from "@/ui/MonthHeader";
-import { colors, font } from "@/ui/theme";
+import { colors, font, radius, shadow, spacing } from "@/ui/theme";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import * as ImagePicker from "expo-image-picker";
 import { useState } from "react";
@@ -92,19 +93,45 @@ export function ScanScreen() {
   if (!review) {
     return (
       <ScrollView style={s.screen} contentContainerStyle={s.content}>
-        <Text style={s.intro}>
-          Prenez en photo vos notes papier : les horaires lus vous seront proposés, et rien n’est
-          enregistré sans votre accord.
-        </Text>
-
         {message && (
-          <Text style={message.kind === "error" ? s.error : s.success}>{message.text}</Text>
+          <View style={[s.message, message.kind === "error" ? s.messageError : s.messageSuccess]}>
+            <Ionicons
+              name={message.kind === "error" ? "alert-circle" : "checkmark-circle"}
+              size={26}
+              color={message.kind === "error" ? colors.danger : colors.success}
+            />
+            <Text
+              style={[
+                s.messageText,
+                { color: message.kind === "error" ? colors.danger : colors.success },
+              ]}
+            >
+              {message.text}
+            </Text>
+          </View>
         )}
+
+        <Card>
+          <CardHeader
+            icon="camera"
+            title="Photographier mes notes"
+            subtitle="Rien n’est enregistré sans votre accord."
+          />
+          <Step number={1} text="Prenez en photo votre feuille d’horaires, bien à plat." />
+          <Step number={2} text="Vérifiez les horaires lus, jour par jour." />
+          <Step number={3} text="Validez : ils s’ajoutent au calendrier." />
+        </Card>
 
         {isScanConfigured() ? (
           <>
-            <Text style={s.label}>Mois des notes</Text>
-            <MonthHeader year={year} month={month} onShift={shift} onToday={goToToday} />
+            <Card>
+              <CardHeader
+                icon="calendar"
+                title="Mois des notes"
+                subtitle="Le mois auquel correspondent les horaires de la feuille."
+              />
+              <MonthHeader year={year} month={month} onShift={shift} onToday={goToToday} />
+            </Card>
             <Button label="Prendre une photo" icon="camera-outline" onPress={() => pick("camera")} />
             <Button
               label="Choisir une photo existante"
@@ -114,10 +141,13 @@ export function ScanScreen() {
             />
           </>
         ) : (
-          <Text style={s.error}>
-            La lecture des photos n’est pas encore configurée sur cette application (clés Firebase
-            manquantes, voir le fichier README).
-          </Text>
+          <View style={[s.message, s.messageWarning]}>
+            <Ionicons name="construct" size={26} color={colors.warningText} />
+            <Text style={[s.messageText, { color: colors.warningText }]}>
+              La lecture des photos n’est pas encore configurée sur cette application (clés
+              Firebase manquantes, voir le fichier README).
+            </Text>
+          </View>
         )}
       </ScrollView>
     );
@@ -236,6 +266,17 @@ export function ScanScreen() {
   );
 }
 
+function Step(props: { number: number; text: string }) {
+  return (
+    <View style={s.step}>
+      <View style={s.stepNumber}>
+        <Text style={s.stepNumberText}>{props.number}</Text>
+      </View>
+      <Text style={s.stepText}>{props.text}</Text>
+    </View>
+  );
+}
+
 /** Un jour travaillé dont les créneaux se chevauchent doit être corrigé avant d'être enregistré. */
 function isSavable(proposal: ScanProposal): boolean {
   return proposal.day.status === "NOT_WORKED" || validateIntervals(proposal.day.intervals) === null;
@@ -243,24 +284,47 @@ function isSavable(proposal: ScanProposal): boolean {
 
 const s = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
-  content: { padding: 16, gap: 14, paddingBottom: 24 },
+  content: { padding: spacing.screen, gap: spacing.gap, paddingBottom: 24 },
   intro: { fontSize: font.body, color: colors.text, lineHeight: 24 },
-  label: { fontSize: font.body, fontWeight: "700", color: colors.text },
-  error: { fontSize: font.body, fontWeight: "600", color: colors.danger },
-  success: { fontSize: font.body, fontWeight: "600", color: colors.success },
-  photo: { width: "100%", height: 200, borderRadius: 12, backgroundColor: colors.borderLight },
-  card: {
-    padding: 12,
+  message: {
+    flexDirection: "row",
+    alignItems: "center",
     gap: 10,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
+    padding: 14,
+    borderRadius: radius.medium,
   },
-  cardOff: { backgroundColor: colors.background },
+  messageError: { backgroundColor: colors.dangerLight },
+  messageSuccess: { backgroundColor: colors.successLight },
+  messageWarning: { backgroundColor: colors.warningLight },
+  messageText: { flex: 1, fontSize: font.body, fontWeight: "600", lineHeight: 23 },
+  step: { flexDirection: "row", alignItems: "center", gap: 12 },
+  stepNumber: {
+    width: 34,
+    height: 34,
+    borderRadius: radius.pill,
+    backgroundColor: colors.primary,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  stepNumberText: { fontSize: font.body, fontWeight: "800", color: colors.onPrimary },
+  stepText: { flex: 1, fontSize: font.body, color: colors.text, lineHeight: 23 },
+  photo: {
+    width: "100%",
+    height: 200,
+    borderRadius: radius.large,
+    backgroundColor: colors.borderLight,
+  },
+  card: {
+    padding: 14,
+    gap: 12,
+    borderRadius: radius.large,
+    backgroundColor: colors.surface,
+    boxShadow: shadow.card,
+  },
+  cardOff: { backgroundColor: colors.surfaceMuted, boxShadow: "none", opacity: 0.85 },
   cardMain: { flexDirection: "row", alignItems: "flex-start", gap: 10 },
   cardBody: { flex: 1, gap: 4 },
-  cardDate: { fontSize: font.body, fontWeight: "700", color: colors.text },
+  cardDate: { fontSize: font.body, fontWeight: "800", color: colors.text },
   cardText: { fontSize: font.body, color: colors.text },
   warning: {
     fontSize: font.small,
@@ -272,10 +336,11 @@ const s = StyleSheet.create({
     borderRadius: 6,
   },
   footer: {
-    padding: 14,
+    padding: spacing.screen,
     gap: 10,
     borderTopWidth: 1,
     borderTopColor: colors.borderLight,
     backgroundColor: colors.surface,
+    boxShadow: "0 -4px 12px rgba(23, 32, 51, 0.08)",
   },
 });

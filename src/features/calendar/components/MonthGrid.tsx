@@ -5,10 +5,10 @@ import {
   toDateKey,
   weekdayIndex,
 } from "@/domain/date";
-import { WorkDay, dayOffLabel } from "@/domain/models/workDay";
+import { DayOffReason, WorkDay, dayOffLabel } from "@/domain/models/workDay";
 import { formatDuration, totalMinutes } from "@/domain/time";
-import { colors, font } from "@/ui/theme";
-import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { colors, font, radius } from "@/ui/theme";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 
 type Props = {
   monthMatrix: (Date | null)[][];
@@ -25,31 +25,72 @@ function compactDuration(minutes: number): string {
   return `${Math.floor(minutes / 60)}h${m ? String(m).padStart(2, "0") : ""}`;
 }
 
-type CellInfo = { color: string; caption: string; description: string };
+/** Libellés assez courts pour tenir dans une case. */
+const ABSENCE_CAPTION: Record<DayOffReason, string> = {
+  repos: "Repos",
+  maladie: "Mal.",
+  conge: "Congé",
+  autre: "Abs.",
+};
 
-function describeDay(date: Date, day: WorkDay | undefined, workingDays: number[], todayKey: string): CellInfo {
-  const holiday = getFrenchHolidayName(date);
+type CellInfo = {
+  background: string;
+  color: string;
+  caption: string;
+  /** Jour habituellement travaillé, déjà passé, sans saisie. */
+  missing?: boolean;
+  description: string;
+};
 
+function describeDay(
+  date: Date,
+  day: WorkDay | undefined,
+  workingDays: number[],
+  todayKey: string
+): CellInfo {
   if (day?.status === "WORKED") {
     const minutes = totalMinutes(day.intervals);
     return {
-      color: colors.dayWorked,
+      background: colors.dayWorked,
+      color: colors.dayWorkedText,
       caption: compactDuration(minutes),
       description: `${formatDuration(minutes)} travaillées`,
     };
   }
   if (day?.status === "NOT_WORKED") {
     const label = dayOffLabel(day.dayOffReason);
-    return { color: colors.dayAbsent, caption: label.slice(0, 5), description: label };
+    return {
+      background: colors.dayAbsent,
+      color: colors.dayAbsentText,
+      caption: ABSENCE_CAPTION[day.dayOffReason ?? "repos"],
+      description: label,
+    };
   }
+  const holiday = getFrenchHolidayName(date);
   if (holiday) {
-    return { color: colors.dayHoliday, caption: "Férié", description: `Férié, ${holiday}` };
+    return {
+      background: colors.dayHoliday,
+      color: colors.dayHolidayText,
+      caption: "Férié",
+      description: `Férié, ${holiday}`,
+    };
   }
-  const expected = workingDays.includes(weekdayIndex(date)) && toDateKey(date) <= todayKey;
-  if (expected) {
-    return { color: colors.dayMissing, caption: "?", description: "à saisir" };
+  const isWorkingDay = workingDays.includes(weekdayIndex(date));
+  if (isWorkingDay && toDateKey(date) <= todayKey) {
+    return {
+      background: colors.surfaceMuted,
+      color: colors.text,
+      caption: "",
+      missing: true,
+      description: "à saisir",
+    };
   }
-  return { color: colors.surface, caption: "", description: "rien de saisi" };
+  return {
+    background: colors.surfaceMuted,
+    color: isWorkingDay ? colors.text : colors.textMuted,
+    caption: "",
+    description: "rien de saisi",
+  };
 }
 
 export function MonthGrid({ monthMatrix, workDays, workingDays, selectedKeys, onDayPress }: Props) {
@@ -73,25 +114,33 @@ export function MonthGrid({ monthMatrix, workDays, workingDays, selectedKeys, on
             const key = toDateKey(date);
             const info = describeDay(date, workDays[key], workingDays, todayKey);
             const selected = selectedKeys.has(key);
+            const isToday = key === todayKey;
 
             return (
-              <TouchableOpacity
+              <Pressable
                 key={j}
-                style={[
+                style={({ pressed }) => [
                   s.dayCell,
-                  { backgroundColor: info.color },
-                  key === todayKey && s.today,
+                  { backgroundColor: selected ? colors.dayRange : info.background },
+                  isToday && s.today,
                   selected && s.selected,
+                  pressed && s.pressed,
                 ]}
                 onPress={() => onDayPress(date)}
                 accessibilityRole="button"
-                accessibilityLabel={`${formatLongDate(date)}, ${info.description}`}
+                accessibilityLabel={`${formatLongDate(date)}, ${info.description}${isToday ? ", aujourd'hui" : ""}`}
               >
-                <Text style={s.dayNumber}>{date.getDate()}</Text>
-                <Text style={s.caption} numberOfLines={1}>
-                  {info.caption}
-                </Text>
-              </TouchableOpacity>
+                <Text style={[s.dayNumber, { color: info.color }]}>{date.getDate()}</Text>
+                {info.missing ? (
+                  <View style={s.captionSlot}>
+                    <View style={s.missingDot} />
+                  </View>
+                ) : (
+                  <Text style={[s.caption, { color: info.color }]} numberOfLines={1}>
+                    {info.caption}
+                  </Text>
+                )}
+              </Pressable>
             );
           })}
         </View>
@@ -101,27 +150,37 @@ export function MonthGrid({ monthMatrix, workDays, workingDays, selectedKeys, on
 }
 
 const s = StyleSheet.create({
-  grid: { gap: 5 },
-  weekRow: { flexDirection: "row", gap: 5 },
+  grid: { gap: 6 },
+  weekRow: { flexDirection: "row", gap: 6 },
   weekHeaderCell: {
     flex: 1,
     textAlign: "center",
-    fontSize: font.small,
+    fontSize: 13,
     fontWeight: "700",
     color: colors.textMuted,
+    textTransform: "uppercase",
+    paddingBottom: 2,
   },
   emptyCell: { flex: 1 },
   dayCell: {
     flex: 1,
-    minHeight: 58,
-    borderRadius: 10,
+    minHeight: 60,
+    borderRadius: radius.small,
     justifyContent: "center",
     alignItems: "center",
     borderWidth: 2,
-    borderColor: colors.borderLight,
+    borderColor: "transparent",
   },
-  today: { borderColor: colors.text },
-  selected: { borderColor: colors.primary, backgroundColor: colors.dayRange },
-  dayNumber: { fontSize: font.body, fontWeight: "700", color: colors.text },
-  caption: { fontSize: 12, fontWeight: "600", color: colors.textMuted, minHeight: 16 },
+  today: { borderColor: colors.primary },
+  selected: { borderColor: colors.primary },
+  pressed: { opacity: 0.7 },
+  dayNumber: { fontSize: font.body, fontWeight: "700" },
+  caption: { fontSize: 12, fontWeight: "700", height: 16, lineHeight: 16 },
+  captionSlot: { height: 16, justifyContent: "center" },
+  missingDot: {
+    width: 8,
+    height: 8,
+    borderRadius: radius.pill,
+    backgroundColor: colors.warning,
+  },
 });

@@ -1,0 +1,14 @@
+# Fins de ligne LF partout, y compris sous Windows.
+* text=auto eol=lf
+
+# Fichiers binaires : aucune conversion.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.webp binary
+*.ttf binary
+*.otf binary
+*.pdf binary
+*.xlsx binary

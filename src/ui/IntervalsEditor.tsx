@@ -1,9 +1,9 @@
 import { WorkInterval } from "@/domain/models/workDay";
 import { formatDuration, formatTime, intervalMinutes, parseTime } from "@/domain/time";
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 import { Button } from "./Button";
-import { colors, font } from "./theme";
+import { colors, font, radius } from "./theme";
 import { TimeField } from "./TimeField";
 
 type Props = {
@@ -30,18 +30,21 @@ export function IntervalsEditor({ intervals, onChange }: Props) {
         return (
           <View key={index} style={s.card}>
             <View style={s.cardHeader}>
-              <Text style={s.cardTitle}>
-                Créneau {index + 1}
-                {minutes > 0 ? `  ·  ${formatDuration(minutes)}` : ""}
-              </Text>
-              <TouchableOpacity
+              <Text style={s.cardTitle}>Créneau {index + 1}</Text>
+              {minutes > 0 && (
+                <View style={s.durationPill}>
+                  <Text style={s.durationText}>{formatDuration(minutes)}</Text>
+                </View>
+              )}
+              <View style={s.spacer} />
+              <Pressable
                 style={s.remove}
                 onPress={() => onChange(intervals.filter((_, i) => i !== index))}
                 accessibilityRole="button"
                 accessibilityLabel={`Supprimer le créneau ${index + 1}`}
               >
                 <Ionicons name="trash-outline" size={22} color={colors.danger} />
-              </TouchableOpacity>
+              </Pressable>
             </View>
             <TimeField
               label="Début"
@@ -67,18 +70,26 @@ const s = StyleSheet.create({
   container: { gap: 12 },
   card: {
     gap: 10,
-    padding: 12,
-    borderRadius: 12,
+    padding: 14,
+    borderRadius: radius.medium,
+    backgroundColor: colors.surfaceMuted,
     borderWidth: 1,
     borderColor: colors.borderLight,
-    backgroundColor: colors.background,
   },
-  cardHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  cardHeader: { flexDirection: "row", alignItems: "center", gap: 10 },
   cardTitle: { fontSize: font.body, fontWeight: "700", color: colors.text },
+  durationPill: {
+    paddingVertical: 3,
+    paddingHorizontal: 10,
+    borderRadius: radius.pill,
+    backgroundColor: colors.successLight,
+  },
+  durationText: { fontSize: font.small, fontWeight: "700", color: colors.success },
+  spacer: { flex: 1 },
   remove: {
     width: 44,
     height: 44,
-    borderRadius: 10,
+    borderRadius: radius.pill,
     backgroundColor: colors.dangerLight,
     alignItems: "center",
     justifyContent: "center",
