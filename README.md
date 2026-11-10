@@ -1,50 +1,62 @@
-# Welcome to your Expo app 👋
+# Work Agenda Management
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+Application mobile (Expo / React Native) de saisie d'horaires pour un travail à temps
+partiel en créneaux (matin + après-midi). Elle calcule automatiquement, semaine par
+semaine, les heures complémentaires et supplémentaires, et produit un relevé mensuel.
 
-## Get started
+## Fonctionnalités
 
-1. Install dependencies
+- **Calendrier** : toucher un jour pour saisir ses créneaux (heures réglées par boutons,
+  journée habituelle proposée d'office), déclarer une absence ou effacer la saisie.
+  « Remplir plusieurs jours d'un coup » applique la même saisie à une période (jours
+  habituellement travaillés, hors fériés).
+- **Photo** : photographier les notes papier ; les horaires lus par Gemini sont proposés
+  jour par jour, à cocher / corriger avant enregistrement.
+- **Rapport** : relevé du mois en PDF ou Excel (tableau jour par jour + heures
+  complémentaires par semaine).
+- **Réglages** : nom, heures hebdomadaires du contrat, jours travaillés, journée habituelle.
 
-   ```bash
-   npm install
-   ```
+## Règles de calcul
 
-2. Start the app
+- Semaine civile du lundi au dimanche. Seules les heures saisies comme travaillées comptent.
+- Heures complémentaires = heures de la semaine au-delà du contrat (20 h par défaut) :
+  +10 % jusqu'à 1/10 du contrat, +25 % au-delà.
+- Heures supplémentaires = au-delà de 35 h dans la semaine.
+- Une semaine à cheval sur deux mois est comptée dans le mois où elle se termine.
 
-   ```bash
-   npx expo start
-   ```
+Le calcul est dans `src/domain/overtime.ts`.
 
-In the output, you'll find options to open the app in a
-
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
+## Démarrer
 
 ```bash
-npm run reset-project
+npm install
+npx expo start
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+## Configurer la lecture des photos (Firebase AI Logic / Gemini)
 
-## Learn more
+1. Créer un projet sur la [console Firebase](https://console.firebase.google.com) et y
+   ajouter une application **Web**.
+2. Dans le menu **AI Logic**, activer l'API **Gemini Developer API**.
+3. Copier `.env.example` en `.env` et y reporter `apiKey`, `projectId` et `appId`.
+4. Relancer `npx expo start`.
 
-To learn more about developing your project with Expo, look at the following resources:
+Sans ces clés, le reste de l'application fonctionne ; seul l'onglet Photo est désactivé.
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+## Vérifications
 
-## Join the community
+```bash
+npm test
+npm run typecheck
+npm run lint
+```
 
-Join our community of developers creating universal apps.
+## Organisation du code
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+- `app/` : routes (onglets) Expo Router.
+- `src/domain/` : logique pure et testée (dates, durées, heures complémentaires, rapport,
+  lecture de la réponse du scan).
+- `src/features/` : écrans (calendrier, photo, rapport, réglages).
+- `src/services/` : stockage local, export PDF/Excel, appel Gemini.
+- `src/state/` : source unique des données partagée par les écrans.
+- `src/ui/` : composants communs.

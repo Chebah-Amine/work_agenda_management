@@ -1,116 +1,161 @@
-import { useEffect } from "react";
-import { Controller, useForm } from "react-hook-form";
-import { ActivityIndicator, ScrollView, Text, TextInput, TouchableOpacity, View } from "react-native";
-import { settingsStyles as s } from "./SettingsStyles";
-import { useSettings } from "./useSettings";
-
-const DAYS = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"];
+import { WEEKDAY_SHORT } from "@/domain/date";
+import { WorkSettings } from "@/domain/models/workSettings";
+import { formatDuration, sortIntervals, totalMinutes, validateIntervals } from "@/domain/time";
+import { useAppData } from "@/state/AppDataContext";
+import { Button } from "@/ui/Button";
+import { IntervalsEditor } from "@/ui/IntervalsEditor";
+import { LoadingView } from "@/ui/LoadingView";
+import { colors, font } from "@/ui/theme";
+import { useState } from "react";
+import { ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 
 export function SettingsScreen() {
-  const { settings, saveSettings, loading } = useSettings();
+  const { data, saveSettings } = useAppData();
+  if (!data) return <LoadingView />;
+  return <SettingsForm initial={data.settings} onSave={saveSettings} />;
+}
 
-  // ⚙️ Initialisation du formulaire
-  const { control, setValue, handleSubmit } = useForm({
-    defaultValues: {
-      monthly: "",
-      daily: "",
-      workingDays: [] as number[],
-    },
-  });
+type FormProps = { initial: WorkSettings; onSave: (settings: WorkSettings) => Promise<void> };
 
-  // 🧲 Synchronise les settings dès qu'ils sont chargés
-  useEffect(() => {
-    if (!loading) {
-      setValue("monthly", String(settings.baseMonthlyMinutes / 60));
-      setValue("daily", String(settings.baseDailyMinutes / 60));
-      setValue("workingDays", settings.workingDays);
-    }
-  }, [loading]);
+function SettingsForm({ initial, onSave }: FormProps) {
+  const [name, setName] = useState(initial.employeeName);
+  const [weeklyHours, setWeeklyHours] = useState(
+    String(initial.weeklyContractMinutes / 60).replace(".", ",")
+  );
+  const [workingDays, setWorkingDays] = useState(initial.workingDays);
+  const [intervals, setIntervals] = useState(initial.defaultIntervals);
+  const [saved, setSaved] = useState(false);
 
-  const onSubmit = (data: any) => {
-    saveSettings({
-      baseMonthlyMinutes: Number(data.monthly) * 60,
-      baseDailyMinutes: Number(data.daily) * 60,
-      workingDays: data.workingDays,
+  const weekly = Number(weeklyHours.replace(",", "."));
+  const error =
+    !Number.isFinite(weekly) || weekly <= 0 || weekly > 48
+      ? "Indiquez le nombre d'heures par semaine du contrat (par exemple 20)."
+      : workingDays.length === 0
+        ? "Choisissez au moins un jour travaillé."
+        : validateIntervals(intervals);
+
+  /** Toute modification masque le message « enregistré ». */
+  function edit<T>(setter: (value: T) => void) {
+    return (value: T) => {
+      setSaved(false);
+      setter(value);
+    };
+  }
+
+  async function save() {
+    if (error) return;
+    await onSave({
+      employeeName: name.trim(),
+      weeklyContractMinutes: Math.round(weekly * 60),
+      workingDays: [...workingDays].sort(),
+      defaultIntervals: sortIntervals(intervals),
     });
-  };
-
-  if (loading) {
-    return (
-      <View style={[s.container, { justifyContent: "center", alignItems: "center" }]}>
-        <ActivityIndicator size="large" />
-      </View>
-    );
+    setSaved(true);
   }
 
   return (
-    <ScrollView contentContainerStyle={s.container}>
-      <Text style={s.sectionTitle}>Paramètres horaires</Text>
+    <ScrollView
+      style={s.screen}
+      contentContainerStyle={s.content}
+      keyboardShouldPersistTaps="handled"
+    >
+      <View style={s.section}>
+        <Text style={s.label}>Nom (affiché sur le rapport)</Text>
+        <TextInput
+          style={s.input}
+          value={name}
+          onChangeText={edit(setName)}
+          placeholder="Prénom Nom"
+          placeholderTextColor={colors.textMuted}
+        />
+      </View>
 
-      {/* Heures mensuelles */}
-      <Text style={s.label}>Heures mensuelles prévues</Text>
-      <Controller
-        control={control}
-        name="monthly"
-        render={({ field: { onChange, value } }) => (
-          <TextInput
-            style={s.input}
-            keyboardType="numeric"
-            value={value}
-            onChangeText={onChange}
-          />
-        )}
-      />
+      <View style={s.section}>
+        <Text style={s.label}>Heures par semaine prévues au contrat</Text>
+        <TextInput
+          style={s.input}
+          keyboardType="decimal-pad"
+          value={weeklyHours}
+          onChangeText={edit(setWeeklyHours)}
+        />
+        <Text style={s.help}>
+          Au-delà, les heures de la semaine sont comptées en heures complémentaires (puis
+          supplémentaires après 35 h).
+        </Text>
+      </View>
 
-      {/* Heures quotidiennes */}
-      <Text style={s.label}>Heures quotidiennes prévues</Text>
-      <Controller
-        control={control}
-        name="daily"
-        render={({ field: { onChange, value } }) => (
-          <TextInput
-            style={s.input}
-            keyboardType="numeric"
-            value={value}
-            onChangeText={onChange}
-          />
-        )}
-      />
+      <View style={s.section}>
+        <Text style={s.label}>Jours habituellement travaillés</Text>
+        <View style={s.days}>
+          {WEEKDAY_SHORT.map((day, i) => {
+            const selected = workingDays.includes(i + 1);
+            return (
+              <TouchableOpacity
+                key={day}
+                style={[s.dayButton, selected && s.dayButtonSelected]}
+                accessibilityRole="button"
+                accessibilityState={{ selected }}
+                onPress={() =>
+                  edit(setWorkingDays)(
+                    selected ? workingDays.filter((d) => d !== i + 1) : [...workingDays, i + 1]
+                  )
+                }
+              >
+                <Text style={[s.dayText, selected && s.dayTextSelected]}>{day}</Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+      </View>
 
-      {/* Jours travaillés */}
-      <Text style={s.label}>Jours travaillés</Text>
+      <View style={s.section}>
+        <Text style={s.label}>
+          Journée habituelle ({formatDuration(totalMinutes(intervals))})
+        </Text>
+        <Text style={s.help}>
+          Ces créneaux sont proposés d’office quand vous touchez un jour vide du calendrier.
+        </Text>
+        <IntervalsEditor intervals={intervals} onChange={edit(setIntervals)} />
+      </View>
 
-      <Controller
-        control={control}
-        name="workingDays"
-        render={({ field: { value, onChange } }) => (
-          <View style={s.daysContainer}>
-            {DAYS.map((day, i) => {
-              const selected = value.includes(i + 1);
-              return (
-                <TouchableOpacity
-                  key={day}
-                  style={[s.dayButton, selected && s.dayButtonSelected]}
-                  onPress={() => {
-                    if (selected) {
-                      onChange(value.filter((d: number) => d !== i + 1));
-                    } else {
-                      onChange([...value, i + 1]);
-                    }
-                  }}
-                >
-                  <Text style={[s.dayText, selected && s.dayTextSelected]}>{day}</Text>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-        )}
-      />
-
-      {/* Enregistrer */}
-      <TouchableOpacity style={s.saveButton} onPress={handleSubmit(onSubmit)}>
-        <Text style={s.saveText}>Enregistrer</Text>
-      </TouchableOpacity>
+      {error ? <Text style={s.error}>{error}</Text> : null}
+      {saved ? <Text style={s.saved}>Réglages enregistrés.</Text> : null}
+      <Button label="Enregistrer" icon="checkmark" onPress={save} disabled={!!error} />
     </ScrollView>
   );
 }
+
+const s = StyleSheet.create({
+  screen: { flex: 1, backgroundColor: colors.background },
+  content: { padding: 16, gap: 22, paddingBottom: 32 },
+  section: { gap: 8 },
+  label: { fontSize: font.body, fontWeight: "700", color: colors.text },
+  help: { fontSize: font.small, color: colors.textMuted },
+  input: {
+    minHeight: 52,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    fontSize: font.large,
+    color: colors.text,
+    backgroundColor: colors.surface,
+  },
+  days: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  dayButton: {
+    minWidth: 56,
+    minHeight: 48,
+    paddingHorizontal: 10,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  dayButtonSelected: { backgroundColor: colors.primary, borderColor: colors.primary },
+  dayText: { fontSize: font.body, fontWeight: "600", color: colors.text },
+  dayTextSelected: { color: "#FFFFFF" },
+  error: { fontSize: font.body, fontWeight: "600", color: colors.danger },
+  saved: { fontSize: font.body, fontWeight: "600", color: colors.success },
+});
