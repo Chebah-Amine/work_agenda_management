@@ -10,12 +10,14 @@ import {
 import { summarizeMonth } from "@/domain/overtime";
 import { useAppData } from "@/state/AppDataContext";
 import { Button } from "@/ui/Button";
+import { Card } from "@/ui/Card";
 import { DayDraft, DayEditorModal } from "@/ui/DayEditorModal";
 import { LoadingView } from "@/ui/LoadingView";
 import { MonthHeader, useYearMonth } from "@/ui/MonthHeader";
-import { colors, font } from "@/ui/theme";
+import { colors, font, radius, spacing } from "@/ui/theme";
+import Ionicons from "@expo/vector-icons/Ionicons";
 import { useState } from "react";
-import { ScrollView, StyleSheet, Text, View } from "react-native";
+import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { CalendarLegend } from "./components/CalendarLegend";
 import { MonthGrid } from "./components/MonthGrid";
 import { MonthSummaryCard } from "./components/MonthSummaryCard";
@@ -95,13 +97,20 @@ export function CalendarScreen() {
 
       {rangePick ? (
         <View style={s.rangeBanner}>
+          <Ionicons name="hand-left-outline" size={24} color={colors.primary} />
           <Text style={s.rangeText}>
             {rangePick.message ??
               (rangePick.start
                 ? `Premier jour : ${formatShortDate(rangePick.start)}. Touchez maintenant le dernier jour.`
                 : "Touchez le premier jour à remplir.")}
           </Text>
-          <Button label="Annuler" variant="secondary" onPress={() => setRangePick(null)} />
+          <Pressable
+            style={s.rangeCancel}
+            onPress={() => setRangePick(null)}
+            accessibilityRole="button"
+          >
+            <Text style={s.rangeCancelText}>Annuler</Text>
+          </Pressable>
         </View>
       ) : (
         <Button
@@ -112,14 +121,16 @@ export function CalendarScreen() {
         />
       )}
 
-      <MonthGrid
-        monthMatrix={getMonthMatrix(year, month)}
-        workDays={workDays}
-        workingDays={settings.workingDays}
-        selectedKeys={selectedKeys}
-        onDayPress={handleDayPress}
-      />
-      <CalendarLegend />
+      <Card>
+        <MonthGrid
+          monthMatrix={getMonthMatrix(year, month)}
+          workDays={workDays}
+          workingDays={settings.workingDays}
+          selectedKeys={selectedKeys}
+          onDayPress={handleDayPress}
+        />
+        <CalendarLegend />
+      </Card>
 
       <MonthSummaryCard summary={summary} contractMinutes={settings.weeklyContractMinutes} />
 
@@ -154,12 +165,24 @@ export function CalendarScreen() {
 
 const s = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
-  content: { padding: 14, gap: 14, paddingBottom: 32 },
+  content: { padding: spacing.screen, gap: spacing.gap, paddingBottom: 32 },
   rangeBanner: {
-    padding: 12,
+    flexDirection: "row",
+    alignItems: "center",
     gap: 10,
-    borderRadius: 12,
+    padding: 14,
+    borderRadius: radius.medium,
     backgroundColor: colors.primaryLight,
+    borderWidth: 2,
+    borderColor: colors.primary,
   },
-  rangeText: { fontSize: font.body, fontWeight: "600", color: colors.text },
+  rangeText: { flex: 1, fontSize: font.body, fontWeight: "600", color: colors.text, lineHeight: 23 },
+  rangeCancel: {
+    minHeight: 44,
+    justifyContent: "center",
+    paddingHorizontal: 14,
+    borderRadius: radius.pill,
+    backgroundColor: colors.surface,
+  },
+  rangeCancelText: { fontSize: font.small, fontWeight: "700", color: colors.primary },
 });

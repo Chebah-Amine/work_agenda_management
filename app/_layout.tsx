@@ -8,10 +8,11 @@ import type { ColorValue } from "react-native";
 type IconName = ComponentProps<typeof Ionicons>["name"];
 type IconColor = ComponentProps<typeof Ionicons>["color"];
 
-const tabIcon = (name: IconName) =>
-  function TabIcon({ color, size }: { color: ColorValue; size: number }) {
+/** Icône pleine pour l'onglet actif, en contour pour les autres. */
+const tabIcon = (name: IconName, outline: IconName) =>
+  function TabIcon({ focused, color }: { focused: boolean; color: ColorValue; size: number }) {
     // @expo/vector-icons n'a pas encore élargi son type `color` au ColorValue de React Native 0.88.
-    return <Ionicons name={name} size={size} color={color as IconColor} />;
+    return <Ionicons name={focused ? name : outline} size={28} color={color as IconColor} />;
   };
 
 export default function RootLayout() {
@@ -21,26 +22,35 @@ export default function RootLayout() {
         screenOptions={{
           tabBarActiveTintColor: colors.primary,
           tabBarInactiveTintColor: colors.textMuted,
-          tabBarLabelStyle: { fontSize: 13, fontWeight: "600" },
-          tabBarStyle: { minHeight: 64 },
-          headerTitleStyle: { fontSize: 22, fontWeight: "700" },
+          tabBarLabelStyle: { fontSize: 13, fontWeight: "700" },
+          tabBarStyle: {
+            minHeight: 68,
+            paddingTop: 6,
+            backgroundColor: colors.surface,
+            borderTopColor: colors.borderLight,
+          },
+          headerStyle: { backgroundColor: colors.background },
+          headerShadowVisible: false,
+          headerTitleAlign: "left",
+          headerTitleStyle: { fontSize: 26, fontWeight: "800", color: colors.text },
+          sceneStyle: { backgroundColor: colors.background },
         }}
       >
         <Tabs.Screen
           name="index"
-          options={{ title: "Mes heures", tabBarLabel: "Calendrier", tabBarIcon: tabIcon("calendar") }}
+          options={{ title: "Mes heures", tabBarLabel: "Calendrier", tabBarIcon: tabIcon("calendar", "calendar-outline") }}
         />
         <Tabs.Screen
           name="scan"
-          options={{ title: "Photo de mes notes", tabBarLabel: "Photo", tabBarIcon: tabIcon("camera") }}
+          options={{ title: "Photo de mes notes", tabBarLabel: "Photo", tabBarIcon: tabIcon("camera", "camera-outline") }}
         />
         <Tabs.Screen
           name="report"
-          options={{ title: "Rapport du mois", tabBarLabel: "Rapport", tabBarIcon: tabIcon("document-text") }}
+          options={{ title: "Rapport du mois", tabBarLabel: "Rapport", tabBarIcon: tabIcon("document-text", "document-text-outline") }}
         />
         <Tabs.Screen
           name="settings"
-          options={{ title: "Réglages", tabBarLabel: "Réglages", tabBarIcon: tabIcon("settings") }}
+          options={{ title: "Réglages", tabBarLabel: "Réglages", tabBarIcon: tabIcon("settings", "settings-outline") }}
         />
       </Tabs>
     </AppDataProvider>

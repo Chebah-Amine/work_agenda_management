@@ -1,5 +1,5 @@
 import { MonthlyReport, reportFileName } from "@/domain/report";
-import { File, Paths } from "expo-file-system";
+import { Directory, File, Paths } from "expo-file-system";
 import * as Print from "expo-print";
 import * as Sharing from "expo-sharing";
 import { Platform } from "react-native";
@@ -7,19 +7,46 @@ import * as XLSX from "xlsx";
 import { buildReportHtml } from "./reportHtml";
 import { buildReportRows } from "./reportSheet";
 
-const XLSX_MIME = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+export type ReportFormat = "pdf" | "excel";
 
-async function share(file: File, mimeType: string, uti: string, title: string) {
-  if (!(await Sharing.isAvailableAsync())) {
-    throw new Error("Le partage de fichiers n'est pas disponible sur cet appareil.");
-  }
-  await Sharing.shareAsync(file.uri, { mimeType, UTI: uti, dialogTitle: title });
+/** Fichier de rapport prêt à être écrit, contenu encodé en base64. */
+type ReportDocument = {
+  name: string;
+  mimeType: string;
+  /** Type de fichier attendu par le partage iOS. */
+  uti: string;
+  base64: string;
+};
+
+const PDF = { mimeType: "application/pdf", uti: "com.adobe.pdf", extension: "pdf" };
+const EXCEL = {
+  mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  uti: "org.openxmlformats.spreadsheetml.sheet",
+  extension: "xlsx",
+};
+
+/** Le partage et l'enregistrement dans un dossier ne sont proposés que sur téléphone. */
+export const canShareReports = Platform.OS !== "web";
+
+function buildWorkbook(report: MonthlyReport): XLSX.WorkBook {
+  const sheet = XLSX.utils.aoa_to_sheet(buildReportRows(report));
+  sheet["!cols"] = [{ wch: 34 }, { wch: 30 }, { wch: 14 }, { wch: 16 }, { wch: 22 }, { wch: 20 }];
+  const workbook = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(workbook, sheet, "Relevé");
+  return workbook;
 }
 
-function cacheFile(name: string): File {
-  const file = new File(Paths.cache, name);
-  if (file.exists) file.delete();
-  return file;
+async function buildDocument(report: MonthlyReport, format: ReportFormat): Promise<ReportDocument> {
+  const baseName = reportFileName(report);
+  if (format === "pdf") {
+    // On récupère le PDF en base64 au lieu de déplacer le fichier d'expo-print :
+    // dans Expo Go, son dossier de sortie n'est pas accessible à expo-file-system.
+    const { base64 } = await Print.printToFileAsync({ html: buildReportHtml(report), base64: true });
+    if (!base64) throw new Error("La génération du PDF a échoué.");
+    return { name: `${baseName}.${PDF.extension}`, mimeType: PDF.mimeType, uti: PDF.uti, base64 };
+  }
+  const base64: string = XLSX.write(buildWorkbook(report), { type: "base64", bookType: "xlsx" });
+  return { name: `${baseName}.${EXCEL.extension}`, mimeType: EXCEL.mimeType, uti: EXCEL.uti, base64 };
 }
 
 /** Sur le web : impression (→ « Enregistrer en PDF ») via un cadre invisible. */
@@ -34,36 +61,55 @@ function printHtmlOnWeb(html: string) {
   document.body.appendChild(frame);
 }
 
-export async function exportReportPdf(report: MonthlyReport): Promise<void> {
-  const html = buildReportHtml(report);
-  if (Platform.OS === "web") {
-    printHtmlOnWeb(html);
-    return;
+/** Ouvre le partage du téléphone (e-mail, messagerie, impression…). */
+export async function shareReport(report: MonthlyReport, format: ReportFormat): Promise<void> {
+  if (!(await Sharing.isAvailableAsync())) {
+    throw new Error("Le partage de fichiers n'est pas disponible sur cet appareil.");
   }
-  // On récupère le PDF en base64 au lieu de déplacer le fichier d'expo-print :
-  // dans Expo Go, son dossier de sortie n'est pas accessible à expo-file-system.
-  const { base64 } = await Print.printToFileAsync({ html, base64: true });
-  if (!base64) throw new Error("La génération du PDF a échoué.");
-  const target = cacheFile(`${reportFileName(report)}.pdf`);
-  target.create();
-  await target.write(base64, { encoding: "base64" });
-  await share(target, "application/pdf", "com.adobe.pdf", report.title);
+  const doc = await buildDocument(report, format);
+  const file = new File(Paths.cache, doc.name);
+  if (file.exists) file.delete();
+  file.create();
+  await file.write(doc.base64, { encoding: "base64" });
+  await Sharing.shareAsync(file.uri, { mimeType: doc.mimeType, UTI: doc.uti, dialogTitle: report.title });
 }
 
-export async function exportReportExcel(report: MonthlyReport): Promise<void> {
-  const sheet = XLSX.utils.aoa_to_sheet(buildReportRows(report));
-  sheet["!cols"] = [{ wch: 34 }, { wch: 30 }, { wch: 14 }, { wch: 16 }, { wch: 22 }, { wch: 20 }];
-  const workbook = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(workbook, sheet, "Relevé");
+/** Dernier dossier choisi, pour rouvrir le sélecteur au même endroit. */
+let lastDirectoryUri: string | undefined;
 
-  const fileName = `${reportFileName(report)}.xlsx`;
+function isPickerCancelled(e: unknown): boolean {
+  const { code, message } = (e ?? {}) as { code?: string; message?: string };
+  return /cancel/i.test(`${code ?? ""} ${message ?? ""}`);
+}
+
+/**
+ * Enregistre le rapport sur l'appareil, dans le dossier choisi par l'utilisateur.
+ * Renvoie le nom du fichier créé, ou null si l'utilisateur a annulé.
+ */
+export async function downloadReport(report: MonthlyReport, format: ReportFormat): Promise<string | null> {
   if (Platform.OS === "web") {
-    XLSX.writeFile(workbook, fileName);
-    return;
+    if (format === "pdf") printHtmlOnWeb(buildReportHtml(report));
+    else XLSX.writeFile(buildWorkbook(report), `${reportFileName(report)}.${EXCEL.extension}`);
+    return null;
   }
-  const bytes: ArrayBuffer = XLSX.write(workbook, { type: "array", bookType: "xlsx" });
-  const target = cacheFile(fileName);
-  target.create();
-  await target.write(new Uint8Array(bytes));
-  await share(target, XLSX_MIME, "org.openxmlformats.spreadsheetml.sheet", report.title);
+
+  let directory: Directory;
+  try {
+    directory = await Directory.pickDirectoryAsync(lastDirectoryUri);
+  } catch (e) {
+    if (isPickerCancelled(e)) return null;
+    throw e;
+  }
+  lastDirectoryUri = directory.uri;
+
+  const doc = await buildDocument(report, format);
+  // iOS refuse de créer un fichier déjà présent : on remplace l'ancien rapport du même mois.
+  // Android, lui, crée « nom (1).pdf » tout seul.
+  if (Platform.OS === "ios") {
+    const existing = new File(directory, doc.name);
+    if (existing.exists) existing.delete();
+  }
+  const file = directory.createFile(doc.name, doc.mimeType);
+  await file.write(doc.base64, { encoding: "base64" });
+  return file.name;
 }
