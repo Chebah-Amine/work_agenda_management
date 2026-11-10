@@ -34,6 +34,6 @@ export class LocalStorage implements StorageService {
     }
     const file = this.file;
     if (!file.exists) file.create();
-    file.write(json);
+    await file.write(json);
   }
 }

@@ -40,9 +40,13 @@ export async function exportReportPdf(report: MonthlyReport): Promise<void> {
     printHtmlOnWeb(html);
     return;
   }
-  const { uri } = await Print.printToFileAsync({ html });
+  // On récupère le PDF en base64 au lieu de déplacer le fichier d'expo-print :
+  // dans Expo Go, son dossier de sortie n'est pas accessible à expo-file-system.
+  const { base64 } = await Print.printToFileAsync({ html, base64: true });
+  if (!base64) throw new Error("La génération du PDF a échoué.");
   const target = cacheFile(`${reportFileName(report)}.pdf`);
-  new File(uri).move(target);
+  target.create();
+  await target.write(base64, { encoding: "base64" });
   await share(target, "application/pdf", "com.adobe.pdf", report.title);
 }
 
@@ -60,6 +64,6 @@ export async function exportReportExcel(report: MonthlyReport): Promise<void> {
   const bytes: ArrayBuffer = XLSX.write(workbook, { type: "array", bookType: "xlsx" });
   const target = cacheFile(fileName);
   target.create();
-  target.write(new Uint8Array(bytes));
+  await target.write(new Uint8Array(bytes));
   await share(target, XLSX_MIME, "org.openxmlformats.spreadsheetml.sheet", report.title);
 }
