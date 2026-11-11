@@ -13,6 +13,8 @@ type AppDataContextValue = {
   saveDays: (days: WorkDay[]) => Promise<void>;
   /** Efface la saisie des jours donnés (clés YYYY-MM-DD). */
   deleteDays: (dateKeys: string[]) => Promise<void>;
+  /** Transformation d'ensemble (archiver, restaurer une sauvegarde, tout effacer…). */
+  updateData: (change: (current: AppData) => AppData) => Promise<void>;
 };
 
 const AppDataContext = createContext<AppDataContextValue | null>(null);
@@ -68,6 +70,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         for (const key of dateKeys) delete workDays[key];
         return { ...current, workDays };
       }),
+    updateData: update,
   };
 
   return <AppDataContext.Provider value={value}>{children}</AppDataContext.Provider>;

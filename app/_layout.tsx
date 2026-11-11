@@ -1,9 +1,9 @@
 import { AppDataProvider } from "@/state/AppDataContext";
 import { colors } from "@/ui/theme";
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { Tabs } from "expo-router";
+import { Tabs, useRouter } from "expo-router";
 import { ComponentProps } from "react";
-import type { ColorValue } from "react-native";
+import { type ColorValue, Pressable } from "react-native";
 
 type IconName = ComponentProps<typeof Ionicons>["name"];
 type IconColor = ComponentProps<typeof Ionicons>["color"];
@@ -15,10 +15,27 @@ const tabIcon = (name: IconName, outline: IconName) =>
     return <Ionicons name={focused ? name : outline} size={28} color={color as IconColor} />;
   };
 
+/** Retour vers les Réglages, d'où l'on ouvre « Mes données ». */
+function BackToSettings() {
+  const router = useRouter();
+  return (
+    <Pressable
+      onPress={() => router.navigate("/settings")}
+      accessibilityRole="button"
+      accessibilityLabel="Retour aux réglages"
+      hitSlop={12}
+      style={{ paddingHorizontal: 12 }}
+    >
+      <Ionicons name="chevron-back" size={30} color={colors.primary} />
+    </Pressable>
+  );
+}
+
 export default function RootLayout() {
   return (
     <AppDataProvider>
       <Tabs
+        backBehavior="history"
         screenOptions={{
           tabBarActiveTintColor: colors.primary,
           tabBarInactiveTintColor: colors.textMuted,
@@ -51,6 +68,15 @@ export default function RootLayout() {
         <Tabs.Screen
           name="settings"
           options={{ title: "Réglages", tabBarLabel: "Réglages", tabBarIcon: tabIcon("settings", "settings-outline") }}
+        />
+        <Tabs.Screen
+          name="data"
+          // Pas d'onglet : l'écran s'ouvre depuis les Réglages.
+          options={{
+            title: "Mes données",
+            tabBarItemStyle: { display: "none" },
+            headerLeft: () => <BackToSettings />,
+          }}
         />
       </Tabs>
     </AppDataProvider>

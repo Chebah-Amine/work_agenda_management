@@ -9,6 +9,7 @@ import { IntervalsEditor } from "@/ui/IntervalsEditor";
 import { LoadingView } from "@/ui/LoadingView";
 import { colors, font, radius, spacing } from "@/ui/theme";
 import Ionicons from "@expo/vector-icons/Ionicons";
+import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 
@@ -37,6 +38,7 @@ type FormProps = { saved: WorkSettings; onSave: (settings: WorkSettings) => Prom
 function SettingsForm({ saved, onSave }: FormProps) {
   const [draft, setDraft] = useState(saved);
   const [justSaved, setJustSaved] = useState(false);
+  const router = useRouter();
 
   const dirty = JSON.stringify(normalize(draft)) !== JSON.stringify(normalize(saved));
   const error =
@@ -199,6 +201,20 @@ function SettingsForm({ saved, onSave }: FormProps) {
                   : ", comme prévu au contrat."}
             </Text>
           </View>
+        </Card>
+
+        <Card>
+          <CardHeader
+            icon="server"
+            title="Mes données"
+            subtitle="Sauvegarder, archiver ou supprimer mes heures."
+          />
+          <Button
+            label="Gérer mes données"
+            icon="chevron-forward"
+            variant="secondary"
+            onPress={() => router.navigate("/data")}
+          />
         </Card>
 
         <Card>

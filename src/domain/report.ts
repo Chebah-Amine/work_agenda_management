@@ -32,7 +32,11 @@ export interface MonthlyReport {
   summary: MonthSummary;
 }
 
-export function buildMonthlyReport(year: number, month: number, data: AppData): MonthlyReport {
+export function buildMonthlyReport(
+  year: number,
+  month: number,
+  data: Pick<AppData, "settings" | "workDays">
+): MonthlyReport {
   const daysInMonth = new Date(year, month + 1, 0).getDate();
   const rows: ReportDayRow[] = [];
 

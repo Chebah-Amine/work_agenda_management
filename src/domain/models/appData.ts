@@ -3,9 +3,21 @@ import { isValidInterval, sortIntervals } from "../time";
 import { cleanDayComment, DAY_OFF_REASONS, WorkDay, WorkInterval } from "./workDay";
 import { DEFAULT_SETTINGS, WorkSettings } from "./workSettings";
 
+/** Une année sortie du calendrier mais conservée sur le téléphone. */
+export interface YearArchive {
+  year: number;
+  /** Date de l'archivage (YYYY-MM-DD), vide si inconnue. */
+  archivedAt: string;
+  workDays: Record<string, WorkDay>;
+}
+
 export interface AppData {
   settings: WorkSettings;
+  /** Jours actifs : ceux que montrent le calendrier et le rapport. */
   workDays: Record<string, WorkDay>;
+  archives: YearArchive[];
+  /** Date de la dernière sauvegarde exportée (YYYY-MM-DD). */
+  lastBackupAt?: string;
 }
 
 function cleanIntervals(raw: unknown): WorkInterval[] {
@@ -35,10 +47,9 @@ function normalizeSettings(raw: any): WorkSettings {
   };
 }
 
-/** Rend exploitable ce qui sort du stockage (ancien format, données abîmées…). */
-export function normalizeAppData(raw: any): AppData {
+function normalizeWorkDays(raw: any): Record<string, WorkDay> {
   const workDays: Record<string, WorkDay> = {};
-  const rawDays = raw && typeof raw.workDays === "object" && raw.workDays ? raw.workDays : {};
+  const rawDays = raw && typeof raw === "object" ? raw : {};
 
   for (const [key, value] of Object.entries<any>(rawDays)) {
     if (!isValidDateKey(key) || !value) continue;
@@ -57,5 +68,40 @@ export function normalizeAppData(raw: any): AppData {
     }
   }
 
-  return { settings: normalizeSettings(raw?.settings), workDays };
+  return workDays;
+}
+
+/** Une archive par année, sans doublon, de la plus récente à la plus ancienne. */
+function normalizeArchives(raw: unknown): YearArchive[] {
+  if (!Array.isArray(raw)) return [];
+  const byYear = new Map<number, YearArchive>();
+
+  for (const item of raw) {
+    const year = Number(item?.year);
+    if (!Number.isInteger(year)) continue;
+    const prefix = `${year}-`;
+    const days = Object.entries(normalizeWorkDays(item.workDays)).filter(([key]) =>
+      key.startsWith(prefix)
+    );
+    if (days.length === 0) continue;
+    const previous = byYear.get(year);
+    byYear.set(year, {
+      year,
+      archivedAt: isValidDateKey(item.archivedAt) ? item.archivedAt : (previous?.archivedAt ?? ""),
+      workDays: { ...previous?.workDays, ...Object.fromEntries(days) },
+    });
+  }
+
+  return [...byYear.values()].sort((a, b) => b.year - a.year);
+}
+
+/** Rend exploitable ce qui sort du stockage (ancien format, données abîmées…). */
+export function normalizeAppData(raw: any): AppData {
+  const data: AppData = {
+    settings: normalizeSettings(raw?.settings),
+    workDays: normalizeWorkDays(raw?.workDays),
+    archives: normalizeArchives(raw?.archives),
+  };
+  if (isValidDateKey(String(raw?.lastBackupAt ?? ""))) data.lastBackupAt = raw.lastBackupAt;
+  return data;
 }

@@ -9,6 +9,7 @@ import {
   ReportFormat,
   shareReport,
 } from "@/services/export/exportReport";
+import { ArchivedYearNotice } from "@/features/data/ArchivedYearNotice";
 import { useAppData } from "@/state/AppDataContext";
 import { Button } from "@/ui/Button";
 import { Card, CardHeader } from "@/ui/Card";
@@ -75,6 +76,7 @@ export function ReportScreen() {
   return (
     <ScrollView style={s.screen} contentContainerStyle={s.content}>
       <MonthHeader year={year} month={month} onShift={shift} onToday={goToToday} />
+      <ArchivedYearNotice year={year} />
 
       <Card>
         <CardHeader icon="paper-plane-outline" title="Envoyer le rapport" />
