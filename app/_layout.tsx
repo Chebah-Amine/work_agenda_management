@@ -1,4 +1,6 @@
-import { AppDataProvider } from "@/state/AppDataContext";
+import { OnboardingScreen } from "@/features/onboarding/OnboardingScreen";
+import { AppDataProvider, useAppData } from "@/state/AppDataContext";
+import { LoadingView } from "@/ui/LoadingView";
 import { colors } from "@/ui/theme";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { Tabs, useRouter } from "expo-router";
@@ -34,6 +36,17 @@ function BackToSettings() {
 export default function RootLayout() {
   return (
     <AppDataProvider>
+      <AppContent />
+    </AppDataProvider>
+  );
+}
+
+function AppContent() {
+  const { data } = useAppData();
+  if (!data) return <LoadingView />;
+  if (data.needsOnboarding) return <OnboardingScreen />;
+
+  return (
       <Tabs
         backBehavior="history"
         screenOptions={{
@@ -79,6 +92,5 @@ export default function RootLayout() {
           }}
         />
       </Tabs>
-    </AppDataProvider>
   );
 }

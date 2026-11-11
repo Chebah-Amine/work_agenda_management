@@ -18,6 +18,8 @@ export interface AppData {
   archives: YearArchive[];
   /** Date de la dernière sauvegarde exportée (YYYY-MM-DD). */
   lastBackupAt?: string;
+  /** Vrai tant que la présentation de première ouverture n'a pas été terminée. */
+  needsOnboarding?: boolean;
 }
 
 function cleanIntervals(raw: unknown): WorkInterval[] {
@@ -103,5 +105,10 @@ export function normalizeAppData(raw: any): AppData {
     archives: normalizeArchives(raw?.archives),
   };
   if (isValidDateKey(String(raw?.lastBackupAt ?? ""))) data.lastBackupAt = raw.lastBackupAt;
+
+  // Rien d'enregistré du tout : c'est la première ouverture de l'application.
+  const isFirstLaunch =
+    !raw?.settings && Object.keys(data.workDays).length === 0 && data.archives.length === 0;
+  if (raw?.needsOnboarding === true || isFirstLaunch) data.needsOnboarding = true;
   return data;
 }
