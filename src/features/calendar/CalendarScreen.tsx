@@ -155,6 +155,7 @@ export function CalendarScreen() {
         saveLabel={
           editing?.kind === "range" ? `Appliquer aux ${editing.dates.length} jours` : "Enregistrer"
         }
+        showComment={editing?.kind !== "range"}
         onSave={handleSave}
         onDelete={editedDay ? handleDelete : undefined}
         onClose={closeEditor}

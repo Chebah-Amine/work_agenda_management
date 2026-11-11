@@ -1,6 +1,6 @@
 import { isValidDateKey } from "../date";
 import { isValidInterval, sortIntervals } from "../time";
-import { DAY_OFF_REASONS, WorkDay, WorkInterval } from "./workDay";
+import { cleanDayComment, DAY_OFF_REASONS, WorkDay, WorkInterval } from "./workDay";
 import { DEFAULT_SETTINGS, WorkSettings } from "./workSettings";
 
 export interface AppData {
@@ -42,16 +42,18 @@ export function normalizeAppData(raw: any): AppData {
 
   for (const [key, value] of Object.entries<any>(rawDays)) {
     if (!isValidDateKey(key) || !value) continue;
+    const comment = cleanDayComment(value.comment);
+    const extra = comment ? { comment } : {};
     if (value.status === "NOT_WORKED") {
       const reason = DAY_OFF_REASONS.some((r) => r.value === value.dayOffReason)
         ? value.dayOffReason
         : "repos";
-      workDays[key] = { date: key, status: "NOT_WORKED", intervals: [], dayOffReason: reason };
+      workDays[key] = { date: key, status: "NOT_WORKED", intervals: [], dayOffReason: reason, ...extra };
       continue;
     }
     const intervals = cleanIntervals(value.intervals);
     if (intervals.length) {
-      workDays[key] = { date: key, status: "WORKED", intervals };
+      workDays[key] = { date: key, status: "WORKED", intervals, ...extra };
     }
   }
 

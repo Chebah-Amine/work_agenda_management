@@ -1,5 +1,7 @@
 import { MonthlyReport, reportFileName } from "@/domain/report";
+import { buildShareMessage } from "@/domain/shareMessage";
 import { Directory, File, Paths } from "expo-file-system";
+import * as MailComposer from "expo-mail-composer";
 import * as Print from "expo-print";
 import * as Sharing from "expo-sharing";
 import { Platform } from "react-native";
@@ -61,17 +63,37 @@ function printHtmlOnWeb(html: string) {
   document.body.appendChild(frame);
 }
 
-/** Ouvre le partage du téléphone (e-mail, messagerie, impression…). */
+async function writeToCache(doc: ReportDocument): Promise<File> {
+  const file = new File(Paths.cache, doc.name);
+  if (file.exists) file.delete();
+  file.create();
+  await file.write(doc.base64, { encoding: "base64" });
+  return file;
+}
+
+/** Ouvre le partage du téléphone (messagerie, Drive, impression…), sans texte d'accompagnement. */
 export async function shareReport(report: MonthlyReport, format: ReportFormat): Promise<void> {
   if (!(await Sharing.isAvailableAsync())) {
     throw new Error("Le partage de fichiers n'est pas disponible sur cet appareil.");
   }
   const doc = await buildDocument(report, format);
-  const file = new File(Paths.cache, doc.name);
-  if (file.exists) file.delete();
-  file.create();
-  await file.write(doc.base64, { encoding: "base64" });
+  const file = await writeToCache(doc);
   await Sharing.shareAsync(file.uri, { mimeType: doc.mimeType, UTI: doc.uti, dialogTitle: report.title });
+}
+
+export class NoMailAppError extends Error {
+  constructor() {
+    super("Aucune application d'e-mail n'est configurée sur ce téléphone.");
+  }
+}
+
+/** Ouvre un e-mail prêt à envoyer : objet, message type et rapport en pièce jointe. */
+export async function emailReport(report: MonthlyReport, format: ReportFormat): Promise<void> {
+  if (!(await MailComposer.isAvailableAsync())) throw new NoMailAppError();
+  const doc = await buildDocument(report, format);
+  const file = await writeToCache(doc);
+  const { subject, body } = buildShareMessage(report);
+  await MailComposer.composeAsync({ subject, body, attachments: [file.uri] });
 }
 
 /** Dernier dossier choisi, pour rouvrir le sélecteur au même endroit. */

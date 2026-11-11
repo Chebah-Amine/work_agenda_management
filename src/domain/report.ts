@@ -18,7 +18,7 @@ export interface ReportDayRow {
   /** "07:00–09:00, 16:00–18:00" ou vide */
   intervals: string;
   minutes: number;
-  /** Férié, motif d'absence… */
+  /** Férié, motif d'absence, commentaire du jour… */
   note: string;
 }
 
@@ -45,6 +45,7 @@ export function buildMonthlyReport(year: number, month: number, data: AppData): 
     const holiday = getFrenchHolidayName(date);
     if (holiday) notes.push(`Férié (${holiday})`);
     if (day?.status === "NOT_WORKED") notes.push(dayOffLabel(day.dayOffReason));
+    if (day?.comment) notes.push(day.comment);
 
     const worked = day?.status === "WORKED";
     rows.push({
