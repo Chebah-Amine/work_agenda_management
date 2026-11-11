@@ -4,9 +4,12 @@ import { MonthSummaryCard } from "@/features/calendar/components/MonthSummaryCar
 import {
   canShareReports,
   downloadReport,
+  emailReport,
+  NoMailAppError,
   ReportFormat,
   shareReport,
 } from "@/services/export/exportReport";
+import { ArchivedYearNotice } from "@/features/data/ArchivedYearNotice";
 import { useAppData } from "@/state/AppDataContext";
 import { Button } from "@/ui/Button";
 import { Card, CardHeader } from "@/ui/Card";
@@ -15,23 +18,30 @@ import { MonthHeader, useYearMonth } from "@/ui/MonthHeader";
 import { colors, font, radius, spacing } from "@/ui/theme";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { ComponentProps, useState } from "react";
-import { ScrollView, StyleSheet, Text, View } from "react-native";
+import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
-type Action = "download" | "share";
+type Action = "email" | "share" | "download";
+
+const ERRORS: Record<Action, string> = {
+  email: "L'e-mail n'a pas pu être préparé. Réessayez, ou utilisez « Partager ».",
+  share: "Le rapport n'a pas pu être créé. Réessayez.",
+  download: "Le rapport n'a pas pu être enregistré. Réessayez ou choisissez un autre dossier.",
+};
 
 const FORMATS: {
   format: ReportFormat;
   label: string;
   icon: ComponentProps<typeof Ionicons>["name"];
 }[] = [
-  { format: "pdf", label: "Rapport PDF", icon: "document-text-outline" },
-  { format: "excel", label: "Rapport Excel", icon: "grid-outline" },
+  { format: "pdf", label: "PDF", icon: "document-text-outline" },
+  { format: "excel", label: "Excel", icon: "grid-outline" },
 ];
 
 export function ReportScreen() {
   const { data } = useAppData();
   const { year, month, shift, goToToday } = useYearMonth();
-  const [busy, setBusy] = useState<string | null>(null);
+  const [format, setFormat] = useState<ReportFormat>("pdf");
+  const [busy, setBusy] = useState<Action | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState<string | null>(null);
 
@@ -40,12 +50,14 @@ export function ReportScreen() {
   const report = buildMonthlyReport(year, month, data);
   const filledRows = report.rows.filter((row) => row.minutes > 0 || row.note);
 
-  async function run(format: ReportFormat, action: Action) {
-    setBusy(`${format}-${action}`);
+  async function run(action: Action) {
+    setBusy(action);
     setError(null);
     setSaved(null);
     try {
-      if (action === "share") {
+      if (action === "email") {
+        await emailReport(report, format);
+      } else if (action === "share") {
         await shareReport(report, format);
       } else {
         const name = await downloadReport(report, format);
@@ -53,52 +65,70 @@ export function ReportScreen() {
       }
     } catch (e) {
       console.warn("Export impossible", e);
-      setError(
-        action === "download"
-          ? "Le rapport n'a pas pu être enregistré. Réessayez ou choisissez un autre dossier."
-          : "Le rapport n'a pas pu être créé. Réessayez."
-      );
+      setError(e instanceof NoMailAppError ? `${e.message} Utilisez « Partager ».` : ERRORS[action]);
     } finally {
       setBusy(null);
     }
   }
 
+  const label = (action: Action, text: string) => (busy === action ? "Création…" : text);
+
   return (
     <ScrollView style={s.screen} contentContainerStyle={s.content}>
       <MonthHeader year={year} month={month} onShift={shift} onToday={goToToday} />
+      <ArchivedYearNotice year={year} />
 
       <Card>
-        <CardHeader icon="download-outline" title="Obtenir le rapport" />
-        {FORMATS.map(({ format, label, icon }) => (
-          <View key={format} style={s.format}>
-            <View style={s.formatTitle}>
-              <Ionicons name={icon} size={22} color={colors.primary} />
-              <Text style={s.formatLabel}>{label}</Text>
-            </View>
-            <View style={s.actions}>
-              <Button
-                label={busy === `${format}-download` ? "Création…" : "Télécharger"}
-                icon="download-outline"
-                onPress={() => run(format, "download")}
+        <CardHeader icon="paper-plane-outline" title="Envoyer le rapport" />
+        <Text style={s.formatLabel}>Format</Text>
+        <View style={s.segment} accessibilityRole="radiogroup">
+          {FORMATS.map((f) => {
+            const selected = f.format === format;
+            return (
+              <Pressable
+                key={f.format}
+                style={[s.segmentButton, selected && s.segmentButtonSelected]}
+                onPress={() => setFormat(f.format)}
                 disabled={!!busy}
-                style={s.flex}
+                accessibilityRole="radio"
+                accessibilityState={{ selected }}
+              >
+                <Ionicons name={f.icon} size={20} color={selected ? colors.onPrimary : colors.textMuted} />
+                <Text style={[s.segmentText, selected && s.segmentTextSelected]}>{f.label}</Text>
+              </Pressable>
+            );
+          })}
+        </View>
+
+        <View style={s.actions}>
+          {canShareReports ? (
+            <>
+              <Button
+                label={label("email", "Envoyer par e-mail")}
+                icon="mail-outline"
+                onPress={() => run("email")}
+                disabled={!!busy}
               />
-              {canShareReports ? (
-                <Button
-                  label={busy === `${format}-share` ? "Création…" : "Partager"}
-                  icon="share-outline"
-                  variant="secondary"
-                  onPress={() => run(format, "share")}
-                  disabled={!!busy}
-                  style={s.flex}
-                />
-              ) : null}
-            </View>
-          </View>
-        ))}
+              <Button
+                label={label("share", "Partager (WhatsApp, SMS…)")}
+                icon="share-outline"
+                variant="secondary"
+                onPress={() => run("share")}
+                disabled={!!busy}
+              />
+            </>
+          ) : null}
+          <Button
+            label={label("download", "Télécharger")}
+            icon="download-outline"
+            variant={canShareReports ? "secondary" : "primary"}
+            onPress={() => run("download")}
+            disabled={!!busy}
+          />
+        </View>
         <Text style={s.hint}>
           {canShareReports
-            ? "Télécharger : enregistre le fichier dans le dossier de votre choix.\nPartager : l’envoie par e-mail, messagerie, impression…"
+            ? "E-mail : le message est déjà rédigé, il ne reste qu’à choisir le destinataire.\nTélécharger : enregistre le fichier dans le dossier de votre choix."
             : "Le PDF s’ouvre dans la fenêtre d’impression : choisissez « Enregistrer en PDF »."}
         </Text>
       </Card>
@@ -135,11 +165,28 @@ export function ReportScreen() {
 const s = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
   content: { padding: spacing.screen, gap: spacing.gap, paddingBottom: 32 },
-  format: { gap: 8, marginBottom: 14 },
-  formatTitle: { flexDirection: "row", alignItems: "center", gap: 8 },
-  formatLabel: { fontSize: font.body, fontWeight: "700", color: colors.text },
-  actions: { flexDirection: "row", gap: 10 },
-  flex: { flex: 1 },
+  formatLabel: { fontSize: font.body, fontWeight: "700", color: colors.text, marginBottom: 8 },
+  segment: {
+    flexDirection: "row",
+    gap: 4,
+    padding: 4,
+    marginBottom: 14,
+    borderRadius: radius.medium,
+    backgroundColor: colors.background,
+  },
+  segmentButton: {
+    flex: 1,
+    flexDirection: "row",
+    gap: 8,
+    minHeight: 48,
+    borderRadius: radius.small,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  segmentButtonSelected: { backgroundColor: colors.primary },
+  segmentText: { fontSize: font.body, fontWeight: "700", color: colors.textMuted },
+  segmentTextSelected: { color: colors.onPrimary },
+  actions: { gap: 10, marginBottom: 12 },
   hint: { fontSize: font.small, color: colors.textMuted, lineHeight: 20 },
   success: {
     fontSize: font.body,

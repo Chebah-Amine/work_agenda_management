@@ -1,15 +1,22 @@
-import { DAY_OFF_REASONS, DayOffReason, WorkDay, WorkInterval } from "@/domain/models/workDay";
+import {
+  cleanDayComment,
+  DAY_COMMENT_MAX_LENGTH,
+  DAY_OFF_REASONS,
+  DayOffReason,
+  WorkDay,
+  WorkInterval,
+} from "@/domain/models/workDay";
 import { formatDuration, sortIntervals, totalMinutes, validateIntervals } from "@/domain/time";
 import { useState } from "react";
 import type { StyleProp, ViewStyle } from "react-native";
-import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Button } from "./Button";
 import { IntervalsEditor } from "./IntervalsEditor";
 import { colors, font, radius } from "./theme";
 
 /** Contenu d'un jour, sans sa date (la même saisie peut servir à plusieurs jours). */
-export type DayDraft = Pick<WorkDay, "status" | "intervals" | "dayOffReason">;
+export type DayDraft = Pick<WorkDay, "status" | "intervals" | "dayOffReason" | "comment">;
 
 type Props = {
   visible: boolean;
@@ -20,6 +27,8 @@ type Props = {
   /** Créneaux proposés d'office pour un jour vierge. */
   defaultIntervals: WorkInterval[];
   saveLabel?: string;
+  /** Champ « Commentaire » : masqué quand la saisie s'applique à plusieurs jours. */
+  showComment?: boolean;
   onSave: (draft: DayDraft) => void;
   /** Fourni seulement s'il existe une saisie à effacer. */
   onDelete?: () => void;
@@ -46,6 +55,7 @@ function DayEditorForm({
   initial,
   defaultIntervals,
   saveLabel = "Enregistrer",
+  showComment = true,
   onSave,
   onDelete,
   onClose,
@@ -55,16 +65,19 @@ function DayEditorForm({
     initial?.status === "WORKED" ? initial.intervals : defaultIntervals
   );
   const [reason, setReason] = useState<DayOffReason>(initial?.dayOffReason ?? "repos");
+  const [comment, setComment] = useState(initial?.comment ?? "");
 
   const insets = useSafeAreaInsets();
   const error = worked ? validateIntervals(intervals) : null;
 
   function save() {
     if (error) return;
+    const cleaned = showComment ? cleanDayComment(comment) : undefined;
+    const extra = cleaned ? { comment: cleaned } : {};
     onSave(
       worked
-        ? { status: "WORKED", intervals: sortIntervals(intervals) }
-        : { status: "NOT_WORKED", intervals: [], dayOffReason: reason }
+        ? { status: "WORKED", intervals: sortIntervals(intervals), ...extra }
+        : { status: "NOT_WORKED", intervals: [], dayOffReason: reason, ...extra }
     );
   }
 
@@ -116,6 +129,31 @@ function DayEditorForm({
             </View>
           </>
         )}
+
+        {showComment ? (
+          <View style={s.commentBlock}>
+            <View style={s.commentHeader}>
+              <Text style={s.label}>Commentaire (facultatif)</Text>
+              <Text style={s.counter}>
+                {comment.length}/{DAY_COMMENT_MAX_LENGTH}
+              </Text>
+            </View>
+            <TextInput
+              style={s.commentInput}
+              value={comment}
+              onChangeText={setComment}
+              maxLength={DAY_COMMENT_MAX_LENGTH}
+              placeholder="Ex. : remplacement d'une collègue"
+              placeholderTextColor={colors.textMuted}
+              multiline
+              // Une seule ligne dans le rapport : la touche Entrée valide au lieu d'aller à la ligne.
+              submitBehavior="blurAndSubmit"
+              returnKeyType="done"
+              accessibilityLabel="Commentaire du jour, facultatif"
+            />
+            <Text style={s.hint}>Il apparaîtra dans la colonne « Remarque » du rapport.</Text>
+          </View>
+        ) : null}
       </ScrollView>
 
       <View style={[s.actions, { paddingBottom: 16 + insets.bottom }]}>
@@ -177,6 +215,22 @@ const s = StyleSheet.create({
   title: { fontSize: font.title, fontWeight: "800", color: colors.text },
   subtitle: { fontSize: font.body, color: colors.textMuted, lineHeight: 23 },
   label: { fontSize: font.body, fontWeight: "700", color: colors.text },
+  commentBlock: { gap: 6 },
+  commentHeader: { flexDirection: "row", alignItems: "baseline", justifyContent: "space-between" },
+  counter: { fontSize: font.small, color: colors.textMuted, fontVariant: ["tabular-nums"] },
+  commentInput: {
+    minHeight: 56,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: radius.medium,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+    fontSize: font.body,
+    color: colors.text,
+    textAlignVertical: "top",
+  },
+  hint: { fontSize: font.small, color: colors.textMuted },
   segment: {
     flexDirection: "row",
     gap: 4,

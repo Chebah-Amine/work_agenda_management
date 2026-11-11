@@ -9,11 +9,12 @@ import {
   toDateKey,
 } from "./date";
 import { normalizeAppData } from "./models/appData";
-import { WorkDay } from "./models/workDay";
+import { cleanDayComment, DAY_COMMENT_MAX_LENGTH, WorkDay } from "./models/workDay";
 import { DEFAULT_SETTINGS } from "./models/workSettings";
 import { computeExtraHours, summarizeMonth, summarizeWeek } from "./overtime";
 import { buildMonthlyReport } from "./report";
 import { parseScanResponse } from "./scan";
+import { buildShareMessage } from "./shareMessage";
 import {
   formatDuration,
   normalizeTime,
@@ -201,6 +202,58 @@ describe("report", () => {
     expect(report.rows[10].note).toContain("Férié");
     expect(report.summary.workedDays).toBe(1);
     expect(report.summary.absenceDays).toBe(1);
+  });
+
+  it("adds the day comment to the remark column", () => {
+    const data = {
+      settings: DEFAULT_SETTINGS,
+      workDays: byDate(
+        { ...worked("2026-11-02", ["07:00", "09:00"]), comment: "Remplacement" },
+        { date: "2026-11-03", status: "NOT_WORKED", intervals: [], dayOffReason: "maladie", comment: "Arrêt" }
+      ),
+    };
+    const report = buildMonthlyReport(2026, 10, data);
+    expect(report.rows[1].note).toBe("Remplacement");
+    expect(report.rows[2].note).toBe("Maladie · Arrêt");
+  });
+});
+
+describe("share message", () => {
+  const report = (month: number, employeeName = "") =>
+    buildMonthlyReport(2026, month, { settings: { ...DEFAULT_SETTINGS, employeeName }, workDays: {} });
+
+  it("is a short e-mail signed with the employee name", () => {
+    const message = buildShareMessage(report(10, "Fatima Chebah"));
+    expect(message.subject).toBe("Relevé d'heures de novembre 2026 – Fatima Chebah");
+    expect(message.body).toBe(
+      "Bonjour,\n\nVous trouverez ci-joint mon relevé d'heures de novembre 2026.\n\nBien cordialement,\nFatima Chebah"
+    );
+  });
+
+  it("elides « de » before a vowel and works without a name", () => {
+    const message = buildShareMessage(report(3));
+    expect(message.subject).toBe("Relevé d'heures d'avril 2026");
+    expect(message.body.endsWith("Bien cordialement,")).toBe(true);
+  });
+});
+
+describe("day comment", () => {
+  it("is kept on one line, trimmed and limited in length", () => {
+    expect(cleanDayComment("  Remplacement \n de  Mme X ")).toBe("Remplacement de Mme X");
+    expect(cleanDayComment("   ")).toBeUndefined();
+    expect(cleanDayComment(42)).toBeUndefined();
+    expect(cleanDayComment("a".repeat(200))).toHaveLength(DAY_COMMENT_MAX_LENGTH);
+  });
+
+  it("survives loading from storage", () => {
+    const data = normalizeAppData({
+      workDays: {
+        "2026-11-02": { status: "WORKED", intervals: [{ start: "07:00", end: "09:00" }], comment: " Formation " },
+        "2026-11-03": { status: "NOT_WORKED", dayOffReason: "conge", comment: "" },
+      },
+    });
+    expect(data.workDays["2026-11-02"].comment).toBe("Formation");
+    expect(data.workDays["2026-11-03"]).not.toHaveProperty("comment");
   });
 });
 

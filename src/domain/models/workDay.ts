@@ -18,9 +18,21 @@ export interface WorkInterval {
 
 export type DayStatus = "WORKED" | "NOT_WORKED";
 
+/** Longueur maximale du commentaire d'un jour (il doit tenir dans une case du rapport). */
+export const DAY_COMMENT_MAX_LENGTH = 80;
+
 export interface WorkDay {
   date: string; // YYYY-MM-DD (date locale)
   status: DayStatus;
   intervals: WorkInterval[];
   dayOffReason?: DayOffReason;
+  /** Commentaire facultatif, repris dans la colonne « Remarque » du rapport. */
+  comment?: string;
+}
+
+/** Commentaire nettoyé : une seule ligne, sans espaces superflus, borné ; undefined si vide. */
+export function cleanDayComment(raw: unknown): string | undefined {
+  if (typeof raw !== "string") return undefined;
+  const text = raw.replace(/\s+/g, " ").trim().slice(0, DAY_COMMENT_MAX_LENGTH).trim();
+  return text || undefined;
 }

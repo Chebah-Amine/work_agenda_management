@@ -8,6 +8,7 @@ import {
   weekdayIndex,
 } from "@/domain/date";
 import { summarizeMonth } from "@/domain/overtime";
+import { ArchivedYearNotice } from "@/features/data/ArchivedYearNotice";
 import { useAppData } from "@/state/AppDataContext";
 import { Button } from "@/ui/Button";
 import { Card } from "@/ui/Card";
@@ -94,6 +95,7 @@ export function CalendarScreen() {
   return (
     <ScrollView style={s.screen} contentContainerStyle={s.content}>
       <MonthHeader year={year} month={month} onShift={shift} onToday={goToToday} />
+      <ArchivedYearNotice year={year} />
 
       {rangePick ? (
         <View style={s.rangeBanner}>
@@ -155,6 +157,7 @@ export function CalendarScreen() {
         saveLabel={
           editing?.kind === "range" ? `Appliquer aux ${editing.dates.length} jours` : "Enregistrer"
         }
+        showComment={editing?.kind !== "range"}
         onSave={handleSave}
         onDelete={editedDay ? handleDelete : undefined}
         onClose={closeEditor}
