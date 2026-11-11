@@ -1,6 +1,5 @@
-import { WEEKDAY_LONG, WEEKDAY_SHORT } from "@/domain/date";
 import { LEGAL_WEEKLY_MINUTES, WorkSettings } from "@/domain/models/workSettings";
-import { formatDuration, sortIntervals, totalMinutes, validateIntervals } from "@/domain/time";
+import { formatDuration, totalMinutes } from "@/domain/time";
 import { isScanConfigured } from "@/services/scan/scanNotes";
 import { useAppData } from "@/state/AppDataContext";
 import { Button } from "@/ui/Button";
@@ -11,40 +10,37 @@ import { colors, font, radius, spacing } from "@/ui/theme";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { ContractStepper } from "./components/ContractStepper";
+import { WorkingDaysPicker } from "./components/WorkingDaysPicker";
+import { normalizeSettingsDraft as normalize, settingsDraftError } from "./settingsDraft";
 
-const CONTRACT_STEP = 30;
-const CONTRACT_MIN = 30;
-const CONTRACT_MAX = LEGAL_WEEKLY_MINUTES;
 
 export function SettingsScreen() {
-  const { data, saveSettings } = useAppData();
+  const { data, saveSettings, updateData } = useAppData();
   if (!data) return <LoadingView />;
-  return <SettingsForm saved={data.settings} onSave={saveSettings} />;
+  return (
+    <SettingsForm
+      saved={data.settings}
+      onSave={saveSettings}
+      onReplayOnboarding={() => updateData((current) => ({ ...current, needsOnboarding: true }))}
+    />
+  );
 }
 
-/** Forme enregistrée d'un brouillon : nom sans espaces autour, listes triées. */
-function normalize(draft: WorkSettings): WorkSettings {
-  return {
-    employeeName: draft.employeeName.trim(),
-    weeklyContractMinutes: draft.weeklyContractMinutes,
-    workingDays: [...draft.workingDays].sort(),
-    defaultIntervals: sortIntervals(draft.defaultIntervals),
-  };
-}
+type FormProps = {
+  saved: WorkSettings;
+  onSave: (settings: WorkSettings) => Promise<void>;
+  onReplayOnboarding: () => void;
+};
 
-type FormProps = { saved: WorkSettings; onSave: (settings: WorkSettings) => Promise<void> };
-
-function SettingsForm({ saved, onSave }: FormProps) {
+function SettingsForm({ saved, onSave, onReplayOnboarding }: FormProps) {
   const [draft, setDraft] = useState(saved);
   const [justSaved, setJustSaved] = useState(false);
   const router = useRouter();
 
   const dirty = JSON.stringify(normalize(draft)) !== JSON.stringify(normalize(saved));
-  const error =
-    draft.workingDays.length === 0
-      ? "Choisissez au moins un jour travaillé."
-      : validateIntervals(draft.defaultIntervals);
+  const error = settingsDraftError(draft);
 
   // Le message « enregistré » s'efface tout seul.
   useEffect(() => {
@@ -56,14 +52,6 @@ function SettingsForm({ saved, onSave }: FormProps) {
   function change(patch: Partial<WorkSettings>) {
     setJustSaved(false);
     setDraft({ ...draft, ...patch });
-  }
-
-  function toggleDay(day: number) {
-    change({
-      workingDays: draft.workingDays.includes(day)
-        ? draft.workingDays.filter((d) => d !== day)
-        : [...draft.workingDays, day],
-    });
   }
 
   async function save() {
@@ -105,28 +93,10 @@ function SettingsForm({ saved, onSave }: FormProps) {
             title="Mon contrat"
             subtitle="Nombre d'heures prévues chaque semaine."
           />
-          <View style={s.stepper}>
-            <StepButton
-              icon="remove"
-              label="Moins d'heures par semaine"
-              disabled={contract <= CONTRACT_MIN}
-              onPress={() =>
-                change({ weeklyContractMinutes: Math.max(CONTRACT_MIN, contract - CONTRACT_STEP) })
-              }
-            />
-            <View style={s.stepperValue}>
-              <Text style={s.stepperNumber}>{formatDuration(contract)}</Text>
-              <Text style={s.stepperUnit}>par semaine</Text>
-            </View>
-            <StepButton
-              icon="add"
-              label="Plus d'heures par semaine"
-              disabled={contract >= CONTRACT_MAX}
-              onPress={() =>
-                change({ weeklyContractMinutes: Math.min(CONTRACT_MAX, contract + CONTRACT_STEP) })
-              }
-            />
-          </View>
+          <ContractStepper
+            minutes={contract}
+            onChange={(weeklyContractMinutes) => change({ weeklyContractMinutes })}
+          />
           <View style={s.rules}>
             <Rule color={colors.success} limit={formatDuration(contract)} text="heures normales" />
             {contract < LEGAL_WEEKLY_MINUTES && (
@@ -155,23 +125,10 @@ function SettingsForm({ saved, onSave }: FormProps) {
             title="Mes jours de travail"
             subtitle="Touchez un jour pour l'ajouter ou le retirer."
           />
-          <View style={s.days}>
-            {WEEKDAY_SHORT.map((day, i) => {
-              const selected = draft.workingDays.includes(i + 1);
-              return (
-                <Pressable
-                  key={day}
-                  style={[s.day, selected && s.daySelected]}
-                  onPress={() => toggleDay(i + 1)}
-                  accessibilityRole="checkbox"
-                  accessibilityLabel={WEEKDAY_LONG[i]}
-                  accessibilityState={{ checked: selected }}
-                >
-                  <Text style={[s.dayText, selected && s.dayTextSelected]}>{day}</Text>
-                </Pressable>
-              );
-            })}
-          </View>
+          <WorkingDaysPicker
+            days={draft.workingDays}
+            onChange={(workingDays) => change({ workingDays })}
+          />
           <Text style={s.help}>
             {draft.workingDays.length === 0
               ? "Aucun jour choisi."
@@ -235,6 +192,12 @@ function SettingsForm({ saved, onSave }: FormProps) {
                 : "Lecture des photos de notes : pas encore configurée."
             }
           />
+          <Button
+            label="Revoir la présentation"
+            icon="play-circle-outline"
+            variant="secondary"
+            onPress={onReplayOnboarding}
+          />
         </Card>
       </ScrollView>
 
@@ -270,30 +233,6 @@ function SettingsForm({ saved, onSave }: FormProps) {
         </View>
       )}
     </View>
-  );
-}
-
-function StepButton(props: {
-  icon: "add" | "remove";
-  label: string;
-  disabled: boolean;
-  onPress: () => void;
-}) {
-  return (
-    <Pressable
-      style={({ pressed }) => [
-        s.stepButton,
-        pressed && s.stepButtonPressed,
-        props.disabled && s.stepButtonDisabled,
-      ]}
-      onPress={props.onPress}
-      disabled={props.disabled}
-      accessibilityRole="button"
-      accessibilityLabel={props.label}
-      accessibilityState={{ disabled: props.disabled }}
-    >
-      <Ionicons name={props.icon} size={30} color={colors.primary} />
-    </Pressable>
   );
 }
 
@@ -339,25 +278,6 @@ const s = StyleSheet.create({
     color: colors.text,
     backgroundColor: colors.surfaceMuted,
   },
-  stepper: { flexDirection: "row", alignItems: "center", gap: 12 },
-  stepperValue: { flex: 1, alignItems: "center" },
-  stepperNumber: {
-    fontSize: 34,
-    fontWeight: "800",
-    color: colors.text,
-    fontVariant: ["tabular-nums"],
-  },
-  stepperUnit: { fontSize: font.small, color: colors.textMuted },
-  stepButton: {
-    width: 60,
-    height: 60,
-    borderRadius: radius.pill,
-    backgroundColor: colors.primaryLight,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  stepButtonPressed: { opacity: 0.7 },
-  stepButtonDisabled: { opacity: 0.35 },
   rules: {
     gap: 8,
     padding: 14,
@@ -368,20 +288,6 @@ const s = StyleSheet.create({
   ruleDot: { width: 10, height: 10, borderRadius: radius.pill },
   ruleLimit: { fontWeight: "800" },
   ruleText: { flex: 1, fontSize: font.small, color: colors.text, lineHeight: 20 },
-  days: { flexDirection: "row", gap: 6 },
-  day: {
-    flex: 1,
-    height: 52,
-    borderRadius: radius.medium,
-    backgroundColor: colors.surfaceMuted,
-    borderWidth: 2,
-    borderColor: colors.borderLight,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  daySelected: { backgroundColor: colors.primary, borderColor: colors.primary },
-  dayText: { fontSize: 15, fontWeight: "700", color: colors.textMuted },
-  dayTextSelected: { color: colors.onPrimary },
   info: {
     flexDirection: "row",
     gap: 10,
