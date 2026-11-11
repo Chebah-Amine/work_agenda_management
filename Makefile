@@ -1,5 +1,5 @@
 .DEFAULT_GOAL := help
-.PHONY: help install start tunnel android ios web clear test typecheck lint check env
+.PHONY: help install start tunnel android ios web clear test typecheck lint check env build-android icons
 
 help: ## Affiche cette aide
 	@echo "Commandes disponibles :"
@@ -15,6 +15,8 @@ help: ## Affiche cette aide
 	@echo "  make lint       Lance le linter"
 	@echo "  make check      Tests + types + lint"
 	@echo "  make env        Cree le fichier .env a partir de .env.example"
+	@echo "  make build-android  Construit l'APK Android a installer (EAS, compte Expo requis)"
+	@echo "  make icons      Regenere les icones de assets/images (Python + Pillow)"
 
 install:
 	npm install
@@ -47,6 +49,12 @@ lint:
 	npm run lint
 
 check: test typecheck lint
+
+build-android:
+	npx eas-cli@latest build --platform android --profile preview
+
+icons:
+	python scripts/generate_icons.py assets/images
 
 env:
 	node -e "const fs=require('fs'); if(fs.existsSync('.env')){console.log('.env existe deja')}else{fs.copyFileSync('.env.example','.env'); console.log('.env cree : renseignez les cles Firebase')}"

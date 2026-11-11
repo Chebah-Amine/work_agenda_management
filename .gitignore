@@ -50,3 +50,9 @@ where_are_we.txt
 
 # variables locales (clés Firebase)
 .env
+
+# outils locaux (agents, éditeur, méthode BMAD) : non versionnés
+.claude/
+.vscode/
+_bmad/
+_bmad-output/
