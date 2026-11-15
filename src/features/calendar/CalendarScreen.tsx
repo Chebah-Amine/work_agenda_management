@@ -15,6 +15,7 @@ import { Card } from "@/ui/Card";
 import { DayDraft, DayEditorModal } from "@/ui/DayEditorModal";
 import { LoadingView } from "@/ui/LoadingView";
 import { MonthHeader, useYearMonth } from "@/ui/MonthHeader";
+import { MonthSwipe } from "@/ui/MonthSwipe";
 import { colors, font, radius, spacing } from "@/ui/theme";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useState } from "react";
@@ -123,16 +124,19 @@ export function CalendarScreen() {
         />
       )}
 
-      <Card>
-        <MonthGrid
-          monthMatrix={getMonthMatrix(year, month)}
-          workDays={workDays}
-          workingDays={settings.workingDays}
-          selectedKeys={selectedKeys}
-          onDayPress={handleDayPress}
-        />
-        <CalendarLegend />
-      </Card>
+      <MonthSwipe onShift={shift}>
+        <Card>
+          <MonthGrid
+            monthMatrix={getMonthMatrix(year, month)}
+            workDays={workDays}
+            workingDays={settings.workingDays}
+            selectedKeys={selectedKeys}
+            onDayPress={handleDayPress}
+          />
+          <CalendarLegend />
+          <Text style={s.swipeHint}>Glissez vers la gauche ou la droite pour changer de mois.</Text>
+        </Card>
+      </MonthSwipe>
 
       <MonthSummaryCard summary={summary} contractMinutes={settings.weeklyContractMinutes} />
 
@@ -169,6 +173,7 @@ export function CalendarScreen() {
 const s = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
   content: { padding: spacing.screen, gap: spacing.gap, paddingBottom: 32 },
+  swipeHint: { fontSize: font.small, color: colors.textMuted, textAlign: "center", marginTop: 8 },
   rangeBanner: {
     flexDirection: "row",
     alignItems: "center",
