@@ -16,7 +16,7 @@ import { DayDraft, DayEditorModal } from "@/ui/DayEditorModal";
 import { LoadingView } from "@/ui/LoadingView";
 import { MonthHeader, useYearMonth } from "@/ui/MonthHeader";
 import { MonthSwipe } from "@/ui/MonthSwipe";
-import { colors, font, radius, spacing } from "@/ui/theme";
+import { colors, font, radius, screenContent } from "@/ui/theme";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
@@ -172,7 +172,7 @@ export function CalendarScreen() {
 
 const s = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
-  content: { padding: spacing.screen, gap: spacing.gap, paddingBottom: 32 },
+  content: screenContent,
   swipeHint: { fontSize: font.small, color: colors.textMuted, textAlign: "center", marginTop: 8 },
   rangeBanner: {
     flexDirection: "row",

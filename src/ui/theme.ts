@@ -47,6 +47,19 @@ export const spacing = {
   gap: 14,
 };
 
+/**
+ * Contenu d'un écran qui défile : centré et limité en largeur sur tablette ou en
+ * paysage, pour garder des cartes et des boutons à taille lisible.
+ */
+export const screenContent = {
+  width: "100%",
+  maxWidth: 640,
+  alignSelf: "center",
+  padding: spacing.screen,
+  gap: spacing.gap,
+  paddingBottom: 32,
+} as const;
+
 /** Ombre douce des cartes. */
 export const shadow = {
   card: "0 1px 2px rgba(23, 32, 51, 0.06), 0 4px 12px rgba(23, 32, 51, 0.05)",

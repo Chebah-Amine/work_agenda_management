@@ -15,7 +15,7 @@ import { Button } from "@/ui/Button";
 import { Card, CardHeader } from "@/ui/Card";
 import { LoadingView } from "@/ui/LoadingView";
 import { MonthHeader, useYearMonth } from "@/ui/MonthHeader";
-import { colors, font, radius, spacing } from "@/ui/theme";
+import { colors, font, radius, screenContent } from "@/ui/theme";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { ComponentProps, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
@@ -168,7 +168,7 @@ export function ReportScreen() {
 
 const s = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
-  content: { padding: spacing.screen, gap: spacing.gap, paddingBottom: 32 },
+  content: screenContent,
   formatLabel: { fontSize: font.body, fontWeight: "700", color: colors.text, marginBottom: 8 },
   segment: {
     flexDirection: "row",

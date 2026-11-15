@@ -9,7 +9,7 @@ import { Card, CardHeader } from "@/ui/Card";
 import { DayEditorModal } from "@/ui/DayEditorModal";
 import { LoadingView } from "@/ui/LoadingView";
 import { MonthHeader, useYearMonth } from "@/ui/MonthHeader";
-import { colors, font, radius, shadow, spacing } from "@/ui/theme";
+import { colors, font, radius, screenContent, shadow, spacing } from "@/ui/theme";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import * as ImagePicker from "expo-image-picker";
 import { useState } from "react";
@@ -284,7 +284,7 @@ function isSavable(proposal: ScanProposal): boolean {
 
 const s = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
-  content: { padding: spacing.screen, gap: spacing.gap, paddingBottom: 24 },
+  content: { ...screenContent, paddingBottom: 24 },
   intro: { fontSize: font.body, color: colors.text, lineHeight: 24 },
   message: {
     flexDirection: "row",
