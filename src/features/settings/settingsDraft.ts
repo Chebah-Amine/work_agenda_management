@@ -1,4 +1,4 @@
-import { WorkSettings } from "@/domain/models/workSettings";
+import { cleanEmails, WorkSettings } from "@/domain/models/workSettings";
 import { sortIntervals, validateIntervals } from "@/domain/time";
 
 /** Forme enregistrée d'un brouillon de réglages : nom sans espaces autour, listes triées. */
@@ -8,6 +8,8 @@ export function normalizeSettingsDraft(draft: WorkSettings): WorkSettings {
     weeklyContractMinutes: draft.weeklyContractMinutes,
     workingDays: [...draft.workingDays].sort(),
     defaultIntervals: sortIntervals(draft.defaultIntervals),
+    mailTo: cleanEmails(draft.mailTo),
+    mailCc: cleanEmails(draft.mailCc),
   };
 }
 

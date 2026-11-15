@@ -10,7 +10,7 @@ import {
 } from "./date";
 import { normalizeAppData } from "./models/appData";
 import { cleanDayComment, DAY_COMMENT_MAX_LENGTH, WorkDay } from "./models/workDay";
-import { DEFAULT_SETTINGS } from "./models/workSettings";
+import { DEFAULT_SETTINGS, isValidEmail, MAX_RECIPIENTS } from "./models/workSettings";
 import { computeExtraHours, summarizeMonth, summarizeWeek } from "./overtime";
 import { buildMonthlyReport } from "./report";
 import { parseScanResponse } from "./scan";
@@ -234,6 +234,28 @@ describe("share message", () => {
     const message = buildShareMessage(report(3));
     expect(message.subject).toBe("Relevé d'heures d'avril 2026");
     expect(message.body.endsWith("Bien cordialement,")).toBe(true);
+  });
+});
+
+describe("e-mail recipients", () => {
+  it("accepts simple addresses and rejects the rest", () => {
+    expect(isValidEmail("rh@entreprise.fr")).toBe(true);
+    expect(isValidEmail(" Paie.RH@groupe-transport.com ")).toBe(true);
+    expect(isValidEmail("rh@entreprise")).toBe(false);
+    expect(isValidEmail("rh entreprise.fr")).toBe(false);
+    expect(isValidEmail("")).toBe(false);
+  });
+
+  it("are cleaned when loaded: lowercase, no duplicate, no invalid, bounded", () => {
+    const data = normalizeAppData({
+      settings: {
+        mailTo: [" RH@Entreprise.fr", "rh@entreprise.fr", "pas-une-adresse", 42],
+        mailCc: Array.from({ length: 8 }, (_, i) => `chef${i}@entreprise.fr`),
+      },
+    });
+    expect(data.settings.mailTo).toEqual(["rh@entreprise.fr"]);
+    expect(data.settings.mailCc).toHaveLength(MAX_RECIPIENTS);
+    expect(normalizeAppData({ settings: {} }).settings.mailTo).toEqual([]);
   });
 });
 
