@@ -12,6 +12,7 @@ import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import { ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { ContractStepper } from "./components/ContractStepper";
+import { RecipientsEditor } from "./components/RecipientsEditor";
 import { WorkingDaysPicker } from "./components/WorkingDaysPicker";
 import { normalizeSettingsDraft as normalize, settingsDraftError } from "./settingsDraft";
 
@@ -85,6 +86,18 @@ function SettingsForm({ saved, onSave, onReplayOnboarding }: FormProps) {
             autoCorrect={false}
             accessibilityLabel="Mon nom"
           />
+        </Card>
+
+        <Card>
+          <CardHeader
+            icon="mail"
+            title="Envoi du rapport"
+            subtitle="Ces adresses sont remplies d'office dans l'e-mail du rapport (par exemple le service RH). À chaque envoi, le téléphone vous laisse choisir l'application : Gmail, Outlook, Yahoo…"
+          />
+          <Text style={s.fieldLabel}>Destinataires (À)</Text>
+          <RecipientsEditor label="À" emails={draft.mailTo} onChange={(mailTo) => change({ mailTo })} />
+          <Text style={[s.fieldLabel, s.fieldLabelSpaced]}>En copie (Cc)</Text>
+          <RecipientsEditor label="Cc" emails={draft.mailCc} onChange={(mailCc) => change({ mailCc })} />
         </Card>
 
         <Card>
@@ -267,6 +280,8 @@ const s = StyleSheet.create({
   content: { padding: spacing.screen, gap: spacing.gap, paddingBottom: 32 },
   flex: { flex: 1 },
   help: { fontSize: font.small, color: colors.textMuted, lineHeight: 20 },
+  fieldLabel: { fontSize: font.body, fontWeight: "700", color: colors.text },
+  fieldLabelSpaced: { marginTop: 14 },
   input: {
     minHeight: 56,
     borderWidth: 2,

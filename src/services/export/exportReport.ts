@@ -88,12 +88,28 @@ export class NoMailAppError extends Error {
 }
 
 /** Ouvre un e-mail prêt à envoyer : objet, message type et rapport en pièce jointe. */
-export async function emailReport(report: MonthlyReport, format: ReportFormat): Promise<void> {
+export type EmailRecipients = { to: string[]; cc: string[] };
+
+/**
+ * Sur Android, le téléphone propose de choisir l'application (Gmail, Outlook, Yahoo Mail…) :
+ * toutes celles installées reçoivent l'objet, le message, les destinataires et la pièce jointe.
+ */
+export async function emailReport(
+  report: MonthlyReport,
+  format: ReportFormat,
+  recipients: EmailRecipients
+): Promise<void> {
   if (!(await MailComposer.isAvailableAsync())) throw new NoMailAppError();
   const doc = await buildDocument(report, format);
   const file = await writeToCache(doc);
   const { subject, body } = buildShareMessage(report);
-  await MailComposer.composeAsync({ subject, body, attachments: [file.uri] });
+  await MailComposer.composeAsync({
+    subject,
+    body,
+    recipients: recipients.to,
+    ccRecipients: recipients.cc,
+    attachments: [file.uri],
+  });
 }
 
 /** Dernier dossier choisi, pour rouvrir le sélecteur au même endroit. */

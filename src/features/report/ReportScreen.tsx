@@ -49,6 +49,10 @@ export function ReportScreen() {
 
   const report = buildMonthlyReport(year, month, data);
   const filledRows = report.rows.filter((row) => row.minutes > 0 || row.note);
+  const { mailTo, mailCc } = data.settings;
+  const recipientsHint = mailTo.length
+    ? `E-mail : envoyé à ${mailTo.join(", ")}${mailCc.length ? ` (copie : ${mailCc.join(", ")})` : ""}. Le téléphone vous laisse choisir l’application (Gmail, Outlook, Yahoo…).`
+    : "E-mail : le message est déjà rédigé. Ajoutez les adresses des destinataires dans les Réglages pour ne plus avoir à les taper.";
 
   async function run(action: Action) {
     setBusy(action);
@@ -56,7 +60,7 @@ export function ReportScreen() {
     setSaved(null);
     try {
       if (action === "email") {
-        await emailReport(report, format);
+        await emailReport(report, format, { to: mailTo, cc: mailCc });
       } else if (action === "share") {
         await shareReport(report, format);
       } else {
@@ -128,7 +132,7 @@ export function ReportScreen() {
         </View>
         <Text style={s.hint}>
           {canShareReports
-            ? "E-mail : le message est déjà rédigé, il ne reste qu’à choisir le destinataire.\nTélécharger : enregistre le fichier dans le dossier de votre choix."
+            ? `${recipientsHint}\nTélécharger : enregistre le fichier dans le dossier de votre choix.`
             : "Le PDF s’ouvre dans la fenêtre d’impression : choisissez « Enregistrer en PDF »."}
         </Text>
       </Card>

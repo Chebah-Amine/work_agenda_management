@@ -1,7 +1,7 @@
 import { isValidDateKey } from "../date";
 import { isValidInterval, sortIntervals } from "../time";
 import { cleanDayComment, DAY_OFF_REASONS, WorkDay, WorkInterval } from "./workDay";
-import { DEFAULT_SETTINGS, WorkSettings } from "./workSettings";
+import { cleanEmails, DEFAULT_SETTINGS, WorkSettings } from "./workSettings";
 
 /** Une année sortie du calendrier mais conservée sur le téléphone. */
 export interface YearArchive {
@@ -46,6 +46,8 @@ function normalizeSettings(raw: any): WorkSettings {
       Number.isFinite(weekly) && weekly > 0 ? weekly : DEFAULT_SETTINGS.weeklyContractMinutes,
     workingDays,
     defaultIntervals: defaultIntervals.length ? defaultIntervals : DEFAULT_SETTINGS.defaultIntervals,
+    mailTo: cleanEmails(raw.mailTo),
+    mailCc: cleanEmails(raw.mailCc),
   };
 }
 
