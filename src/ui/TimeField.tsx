@@ -86,7 +86,12 @@ function Stepper(props: {
   );
 }
 
-/** Champ à deux chiffres : la saisie n'est appliquée qu'une fois validée et bornée. */
+/**
+ * Champ à deux chiffres, appliqué à chaque chiffre tapé (borné au maximum).
+ *
+ * On n'attend pas que le champ perde le focus : dans un formulaire, toucher + / −
+ * ou un autre bouton laisse le clavier ouvert, et la saisie ne serait jamais appliquée.
+ */
 function NumberInput(props: {
   value: number;
   max: number;
@@ -94,23 +99,32 @@ function NumberInput(props: {
   onChange: (next: number) => void;
 }) {
   const shown = String(props.value).padStart(2, "0");
-  const [draft, setDraft] = useState<string | null>(null);
+  // Texte en cours de frappe, et la valeur qu'il représente.
+  const [draft, setDraft] = useState<{ text: string; value: number } | null>(null);
+  // Le texte tapé n'est affiché que s'il correspond encore à la valeur réelle :
+  // si + / − la change pendant la saisie, le champ réaffiche la valeur à jour.
+  const typing = draft !== null && draft.value === props.value;
 
-  function commit() {
-    if (draft !== null && draft !== "") {
-      props.onChange(Math.min(Number(draft), props.max));
+  function handleChangeText(raw: string) {
+    const digits = raw.replace(/\D/g, "").slice(0, 2);
+    if (digits === "") {
+      setDraft({ text: "", value: props.value });
+      return;
     }
-    setDraft(null);
+    const next = Math.min(Number(digits), props.max);
+    setDraft({ text: Number(digits) > props.max ? String(props.max) : digits, value: next });
+    if (next !== props.value) props.onChange(next);
   }
 
   return (
     <TextInput
       style={s.value}
-      value={draft ?? shown}
-      onFocus={() => setDraft("")}
-      onChangeText={(text) => setDraft(text.replace(/\D/g, "").slice(0, 2))}
-      onBlur={commit}
-      onSubmitEditing={commit}
+      value={typing ? draft.text : shown}
+      onFocus={() => setDraft({ text: "", value: props.value })}
+      onChangeText={handleChangeText}
+      onBlur={() => setDraft(null)}
+      onSubmitEditing={() => setDraft(null)}
+      maxFontSizeMultiplier={1.4}
       placeholder={shown}
       placeholderTextColor={colors.textMuted}
       keyboardType="number-pad"
@@ -169,19 +183,23 @@ function RepeatButton(props: {
 const s = StyleSheet.create({
   row: { gap: 4 },
   label: { fontSize: font.small, color: colors.textMuted, fontWeight: "600" },
-  steppers: { flexDirection: "row", alignItems: "center", gap: 6 },
-  stepper: { flexDirection: "row", alignItems: "center", gap: 2 },
+  // Largeurs souples : le champ tient dans la place disponible, du petit téléphone
+  // (360 points de large, dans une carte de formulaire) à la tablette.
+  steppers: { flexDirection: "row", alignItems: "center", gap: 4 },
+  stepper: { flex: 1, maxWidth: 180, flexDirection: "row", alignItems: "center", gap: 2 },
   stepButton: {
-    width: 42,
-    height: 42,
+    width: 40,
+    height: 44,
     borderRadius: 10,
     backgroundColor: colors.primaryLight,
     alignItems: "center",
     justifyContent: "center",
   },
   value: {
-    // Largeur fixe : sans elle, le champ s'étire (notamment sur le web).
-    width: 52,
+    flex: 1,
+    // Sans minWidth: 0, un champ de texte refuse de rétrécir (notamment sur le web).
+    minWidth: 0,
+    height: 44,
     paddingVertical: 4,
     paddingHorizontal: 2,
     borderRadius: 8,

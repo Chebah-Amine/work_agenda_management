@@ -23,7 +23,7 @@ import { Button } from "@/ui/Button";
 import { Card, CardHeader } from "@/ui/Card";
 import { ConfirmModal } from "@/ui/ConfirmModal";
 import { LoadingView } from "@/ui/LoadingView";
-import { colors, font, radius, spacing } from "@/ui/theme";
+import { colors, font, radius, screenContent } from "@/ui/theme";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { ComponentProps, ComponentRef, useRef, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
@@ -442,7 +442,7 @@ function Choice(props: { selected: boolean; title: string; detail: string; onPre
 
 const s = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
-  content: { padding: spacing.screen, gap: spacing.gap, paddingBottom: 32 },
+  content: screenContent,
   help: { fontSize: font.small, color: colors.textMuted, lineHeight: 20 },
   message: {
     flexDirection: "row",
