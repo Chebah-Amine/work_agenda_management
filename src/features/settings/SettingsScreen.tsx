@@ -319,6 +319,7 @@ const s = StyleSheet.create({
   infoRow: { flexDirection: "row", alignItems: "center", gap: 12 },
   infoRowText: { flex: 1, fontSize: font.body, color: colors.text, lineHeight: 23 },
   saveBar: {
+    marginBottom: spacing.screen,
     padding: spacing.screen,
     gap: 10,
     backgroundColor: colors.surface,
