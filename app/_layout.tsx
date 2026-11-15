@@ -6,6 +6,7 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import { Tabs, useRouter } from "expo-router";
 import { ComponentProps } from "react";
 import { type ColorValue, Pressable } from "react-native";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
 
 type IconName = ComponentProps<typeof Ionicons>["name"];
 type IconColor = ComponentProps<typeof Ionicons>["color"];
@@ -35,9 +36,12 @@ function BackToSettings() {
 
 export default function RootLayout() {
   return (
-    <AppDataProvider>
-      <AppContent />
-    </AppDataProvider>
+    // Requis par react-native-gesture-handler (glissement entre les mois du calendrier).
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <AppDataProvider>
+        <AppContent />
+      </AppDataProvider>
+    </GestureHandlerRootView>
   );
 }
 
