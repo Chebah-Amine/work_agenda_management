@@ -7,7 +7,7 @@ import { NO_WORKING_DAY_ERROR, normalizeSettingsDraft } from "@/features/setting
 import { useAppData } from "@/state/AppDataContext";
 import { Button } from "@/ui/Button";
 import { IntervalsEditor } from "@/ui/IntervalsEditor";
-import { colors, font, radius, spacing } from "@/ui/theme";
+import { colors, font, radius, screenContent, spacing } from "@/ui/theme";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { ComponentProps, ComponentRef, ReactNode, useRef, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
@@ -262,7 +262,7 @@ const s = StyleSheet.create({
   skip: { minHeight: 44, justifyContent: "center", paddingHorizontal: 8 },
   skipText: { fontSize: font.body, fontWeight: "700", color: colors.textMuted },
   scroll: { flex: 1 },
-  content: { padding: spacing.screen, paddingTop: 8, paddingBottom: 32, gap: spacing.gap },
+  content: { ...screenContent, paddingTop: 8 },
   step: { gap: 12 },
   badge: {
     width: 88,

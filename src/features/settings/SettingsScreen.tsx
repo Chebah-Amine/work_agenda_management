@@ -6,7 +6,8 @@ import { Button } from "@/ui/Button";
 import { Card, CardHeader } from "@/ui/Card";
 import { IntervalsEditor } from "@/ui/IntervalsEditor";
 import { LoadingView } from "@/ui/LoadingView";
-import { colors, font, radius, spacing } from "@/ui/theme";
+import { useKeyboardOverlap } from "@/ui/useKeyboardOverlap";
+import { colors, font, radius, screenContent, spacing } from "@/ui/theme";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
@@ -52,8 +53,11 @@ function SettingsForm({ saved, onSave, onReplayOnboarding }: FormProps) {
 
   function change(patch: Partial<WorkSettings>) {
     setJustSaved(false);
-    setDraft({ ...draft, ...patch });
+    // Forme fonctionnelle : deux changements rapprochés (appui long sur +…) ne s'écrasent pas.
+    setDraft((current) => ({ ...current, ...patch }));
   }
+
+  const { ref: keyboardRef, overlap: keyboardOverlap } = useKeyboardOverlap();
 
   async function save() {
     if (error) return;
@@ -68,7 +72,8 @@ function SettingsForm({ saved, onSave, onReplayOnboarding }: FormProps) {
   const usualWeek = dayMinutes * draft.workingDays.length;
 
   return (
-    <View style={s.screen}>
+    // Le padding remonte la barre « Enregistrer » au-dessus du clavier quand il la recouvre.
+    <View ref={keyboardRef} style={[s.screen, { paddingBottom: keyboardOverlap }]}>
       <ScrollView contentContainerStyle={s.content} keyboardShouldPersistTaps="handled">
         <Card>
           <CardHeader
@@ -86,18 +91,6 @@ function SettingsForm({ saved, onSave, onReplayOnboarding }: FormProps) {
             autoCorrect={false}
             accessibilityLabel="Mon nom"
           />
-        </Card>
-
-        <Card>
-          <CardHeader
-            icon="mail"
-            title="Envoi du rapport"
-            subtitle="Ces adresses sont remplies d'office dans l'e-mail du rapport (par exemple le service RH). À chaque envoi, le téléphone vous laisse choisir l'application : Gmail, Outlook, Yahoo…"
-          />
-          <Text style={s.fieldLabel}>Destinataires (À)</Text>
-          <RecipientsEditor label="À" emails={draft.mailTo} onChange={(mailTo) => change({ mailTo })} />
-          <Text style={[s.fieldLabel, s.fieldLabelSpaced]}>En copie (Cc)</Text>
-          <RecipientsEditor label="Cc" emails={draft.mailCc} onChange={(mailCc) => change({ mailCc })} />
         </Card>
 
         <Card>
@@ -171,6 +164,18 @@ function SettingsForm({ saved, onSave, onReplayOnboarding }: FormProps) {
                   : ", comme prévu au contrat."}
             </Text>
           </View>
+        </Card>
+
+        <Card>
+          <CardHeader
+            icon="mail"
+            title="Envoi du rapport"
+            subtitle="Ces adresses sont remplies d'office dans l'e-mail du rapport (par exemple le service RH). À chaque envoi, le téléphone vous laisse choisir l'application : Gmail, Outlook, Yahoo…"
+          />
+          <Text style={s.fieldLabel}>Destinataires (À)</Text>
+          <RecipientsEditor label="À" emails={draft.mailTo} onChange={(mailTo) => change({ mailTo })} />
+          <Text style={[s.fieldLabel, s.fieldLabelSpaced]}>En copie (Cc)</Text>
+          <RecipientsEditor label="Cc" emails={draft.mailCc} onChange={(mailCc) => change({ mailCc })} />
         </Card>
 
         <Card>
@@ -277,7 +282,7 @@ function InfoRow(props: { icon: "phone-portrait-outline" | "camera-outline"; tex
 
 const s = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
-  content: { padding: spacing.screen, gap: spacing.gap, paddingBottom: 32 },
+  content: screenContent,
   flex: { flex: 1 },
   help: { fontSize: font.small, color: colors.textMuted, lineHeight: 20 },
   fieldLabel: { fontSize: font.body, fontWeight: "700", color: colors.text },
